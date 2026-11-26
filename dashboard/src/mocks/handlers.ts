@@ -15,6 +15,8 @@ import { sizeFromBudget } from '../features/post-project/size';
 import { roleCanSeeEvent } from './simulator';
 import { UserRole } from '../realtime/types';
 import type { ProjectDetail } from '../services/project/types';
+import { aiBriefMockHandlers } from './aiBriefMock';
+import { reviewMockHandlers } from './reviewMock';
 
 function generateCorrelationId(): string {
   return `corr-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
@@ -578,7 +580,16 @@ export const projectHandlers = [
     }
 
     // Validate with Zod postProjectSchema
-    const parseResult = postProjectSchema.safeParse(body);
+    const normalizedBody = {
+      ...body,
+      blockerType: body.blockerType || body.blocker_type || 'HARD_BUG',
+      repoUrl: body.repoUrl !== undefined ? body.repoUrl : body.repo_url,
+      verificationMode: body.verificationMode || body.verification_mode || 'AUTO_TESTS_AND_REVIEW',
+      stacks: body.stacks || (Array.isArray(body.required_skills) && body.required_skills.length ? body.required_skills : ['PYTHON_FASTAPI']),
+      skills: body.skills || body.required_skills || [],
+      urgency: body.urgency || 'THIS_WEEK',
+    };
+    const parseResult = postProjectSchema.safeParse(normalizedBody);
     if (!parseResult.success) {
       const errors = parseResult.error.errors.map((e) => ({
         field: String(e.path[0] ?? ''),
@@ -622,8 +633,8 @@ export const projectHandlers = [
       verificationMode: data.verificationMode,
       createdAt: now,
       updatedAt: now,
-      matchingStatus: 'computing',
-      status: 'open',
+      matchingStatus: body.status === 'draft' ? 'pending' : 'computing',
+      status: body.status === 'draft' ? 'draft' : 'open',
       repo: repoSlug,
       freelancerName: null,
     };
@@ -1180,11 +1191,15 @@ export const serviceHandlers: Record<string, any[]> = {
   workspace: workspaceHandlers,
   notification: notificationHandlers,
   admin: adminHandlers,
+  review: reviewMockHandlers,
+  verification: reviewMockHandlers,
 };
 
 export const handlers = [
   ...identityHandlers,
   ...projectHandlers,
+  ...aiBriefMockHandlers,
+  ...reviewMockHandlers,
   ...talentHandlers,
   ...paymentHandlers,
   ...workspaceHandlers,

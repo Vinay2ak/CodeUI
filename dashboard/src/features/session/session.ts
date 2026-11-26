@@ -35,6 +35,78 @@ export interface SessionState {
   expiresAt: number | null;
 }
 
+const SESSION_STORAGE_KEY = 'cb_dashboard_session';
+
+interface PersistedSession {
+  user: User;
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresAt: number | null;
+}
+
+function persistSession(data: PersistedSession): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function readPersistedSession(): PersistedSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.user) {
+      return {
+        user: normalizeUser(parsed.user),
+        accessToken: parsed.accessToken || null,
+        refreshToken: parsed.refreshToken || null,
+        expiresAt: typeof parsed.expiresAt === 'number' ? parsed.expiresAt : null,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function clearPersistedSession(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+  if (typeof document !== 'undefined') {
+    const cookieNames = [
+      'cb_access_token',
+      'cb_token',
+      'cb_refresh_token',
+      'cb_rt',
+      'cb_user',
+      'mock_rt',
+    ];
+    for (const name of cookieNames) {
+      document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+    }
+  }
+}
+
+function readCookieValue(name: string): string | null {
+  if (typeof document === 'undefined' || !document.cookie) return null;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]*)`));
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
 // Decode JWT exp (ms) safely for proactive scheduling only
 function decodeJwtExp(token: string): number | null {
   try {
@@ -71,6 +143,18 @@ function decodeJwtPayload(token: string): any {
   }
 }
 
+function parseUserJsonParam(rawUser: string): User | null {
+  try {
+    return normalizeUser(JSON.parse(rawUser));
+  } catch {
+    try {
+      return normalizeUser(JSON.parse(decodeURIComponent(rawUser)));
+    } catch {
+      return null;
+    }
+  }
+}
+
 export function redirectToWorkspace(
   token?: string | null,
   rt?: string | null,
@@ -103,9 +187,10 @@ function getInitialTokenAndUser(): {
   token: string | null;
   rt: string | null;
   user: User | null;
+  expiresAt: number | null;
 } {
   if (typeof window === 'undefined') {
-    return { token: null, rt: null, user: null };
+    return { token: null, rt: null, user: null, expiresAt: null };
   }
 
   const url = new URL(window.location.href);
@@ -126,12 +211,31 @@ function getInitialTokenAndUser(): {
 
   let parsedUser: User | null = null;
   if (incomingUser) {
-    try {
-      parsedUser = normalizeUser(JSON.parse(incomingUser));
-    } catch {
-      parsedUser = null;
+    parsedUser = parseUserJsonParam(incomingUser);
+  }
+
+  // If user profile is not yet parsed but token exists, decode JWT payload
+  if (!parsedUser && incomingToken) {
+    const payload = decodeJwtPayload(incomingToken);
+    if (payload && (payload.sub || payload.id)) {
+      const r = (payload.role || 'owner').toLowerCase();
+      parsedUser = {
+        id: payload.sub || payload.id,
+        email: payload.email || '',
+        displayName:
+          payload.displayName ||
+          payload.full_name ||
+          payload.name ||
+          payload.email?.split('@')[0] ||
+          'User',
+        role: r === 'admin' ? 'admin' : r === 'freelancer' ? 'freelancer' : 'owner',
+        status: payload.status || 'active',
+        createdAt: new Date().toISOString(),
+      };
     }
-  } else if (incomingRole) {
+  }
+
+  if (!parsedUser && incomingRole) {
     const validRole =
       incomingRole.toLowerCase() === 'admin'
         ? 'admin'
@@ -148,32 +252,51 @@ function getInitialTokenAndUser(): {
     };
   }
 
-  // Save tokens strictly in memory
+  // If no URL handoff, restore persisted session on reload or shared localhost cookies from 5173
+  let persistedExpiresAt: number | null = null;
+  if (!incomingToken && !parsedUser) {
+    const persisted = readPersistedSession();
+    if (persisted && persisted.user) {
+      incomingToken = persisted.accessToken;
+      incomingRt = persisted.refreshToken;
+      parsedUser = persisted.user;
+      persistedExpiresAt = persisted.expiresAt;
+    } else {
+      const cookieToken = readCookieValue('cb_access_token') || readCookieValue('cb_token');
+      const cookieRt = readCookieValue('cb_refresh_token') || readCookieValue('cb_rt');
+      const cookieUserRaw = readCookieValue('cb_user');
+      if (cookieToken) incomingToken = cookieToken;
+      if (cookieRt) incomingRt = cookieRt;
+      if (cookieUserRaw) {
+        parsedUser = parseUserJsonParam(cookieUserRaw);
+      }
+      if (!parsedUser && incomingToken) {
+        const payload = decodeJwtPayload(incomingToken);
+        if (payload && (payload.sub || payload.id)) {
+          const r = (payload.role || 'owner').toLowerCase();
+          parsedUser = {
+            id: payload.sub || payload.id,
+            email: payload.email || '',
+            displayName:
+              payload.displayName ||
+              payload.full_name ||
+              payload.name ||
+              payload.email?.split('@')[0] ||
+              'User',
+            role: r === 'admin' ? 'admin' : r === 'freelancer' ? 'freelancer' : 'owner',
+            status: payload.status || 'active',
+            createdAt: new Date().toISOString(),
+          };
+        }
+      }
+    }
+  }
+
   if (incomingToken) {
     setAccessToken(incomingToken);
   }
   if (incomingRt) {
     setRefreshToken(incomingRt);
-  }
-
-  // If user profile is not yet available but token exists, decode JWT payload
-  if (!parsedUser && incomingToken) {
-    const payload = decodeJwtPayload(incomingToken);
-    if (payload && (payload.sub || payload.id)) {
-      const r = (payload.role || 'owner').toLowerCase();
-      parsedUser = {
-        id: payload.sub || payload.id,
-        email: payload.email || '',
-        displayName:
-          payload.displayName ||
-          payload.full_name ||
-          payload.email?.split('@')[0] ||
-          'User',
-        role: r === 'admin' ? 'admin' : r === 'freelancer' ? 'freelancer' : 'owner',
-        status: payload.status || 'active',
-        createdAt: new Date().toISOString(),
-      };
-    }
   }
 
   // Handle freelancer redirection to workspace
@@ -186,6 +309,7 @@ function getInitialTokenAndUser(): {
       token: incomingToken || null,
       rt: incomingRt || null,
       user: parsedUser,
+      expiresAt: persistedExpiresAt,
     };
   }
 
@@ -211,15 +335,25 @@ function getInitialTokenAndUser(): {
     );
   }
 
-  if (incomingToken && parsedUser) {
+  const resolvedExpiresAt =
+    persistedExpiresAt || (incomingToken ? decodeJwtExp(incomingToken) : null);
+
+  if (parsedUser && incomingToken) {
+    persistSession({
+      user: parsedUser,
+      accessToken: incomingToken,
+      refreshToken: incomingRt || null,
+      expiresAt: resolvedExpiresAt,
+    });
     return {
       token: incomingToken,
       rt: incomingRt || null,
       user: parsedUser,
+      expiresAt: resolvedExpiresAt,
     };
   }
 
-  return { token: incomingToken || null, rt: incomingRt || null, user: null };
+  return { token: incomingToken || null, rt: incomingRt || null, user: null, expiresAt: null };
 }
 
 const initialHandoff = getInitialTokenAndUser();
@@ -229,7 +363,7 @@ let state: SessionState = initialHandoff.user
       status: 'authenticated',
       user: initialHandoff.user,
       accessToken: initialHandoff.token,
-      expiresAt: initialHandoff.token ? decodeJwtExp(initialHandoff.token) : null,
+      expiresAt: initialHandoff.expiresAt,
     }
   : {
       status: 'loading',
@@ -253,6 +387,16 @@ export const sessionStore = {
     if ('accessToken' in nextState) {
       setAccessToken(nextState.accessToken ?? null);
     }
+    if (state.status === 'authenticated' && state.user) {
+      persistSession({
+        user: state.user,
+        accessToken: state.accessToken,
+        refreshToken: getRefreshToken(),
+        expiresAt: state.expiresAt,
+      });
+    } else if (state.status === 'anonymous' || state.status === 'suspended') {
+      clearPersistedSession();
+    }
     listeners.forEach((listener) => listener());
   },
   subscribe: (listener: () => void) => {
@@ -274,7 +418,6 @@ function scheduleProactiveRefresh(token: string) {
 
   const now = Date.now();
   const timeUntilExp = expMs - now;
-  // Refresh 60 seconds before expiration, minimum 5 seconds
   const refreshInMs = Math.max(timeUntilExp - 60000, 5000);
 
   if (timeUntilExp > 0) {
@@ -284,7 +427,6 @@ function scheduleProactiveRefresh(token: string) {
   }
 }
 
-// Single-flight refresh promise
 let refreshInFlight: Promise<string | null> | null = null;
 
 export async function refreshSession(): Promise<string | null> {
@@ -311,9 +453,12 @@ export async function refreshSession(): Promise<string | null> {
 
       setAccessToken(token);
 
+      const resolvedUser =
+        data.user && data.user.id !== 'anonymous' ? data.user : state.user;
+
       sessionStore.setState({
         status: 'authenticated',
-        user: data.user || state.user,
+        user: resolvedUser,
         accessToken: token,
         expiresAt: expMs,
       });
@@ -332,6 +477,20 @@ export async function refreshSession(): Promise<string | null> {
         throw err;
       }
 
+      // If we already have a non-expired access token in memory/sessionStorage and hit a transient error, keep the active session
+      const hasValidSession =
+        state.status === 'authenticated' &&
+        Boolean(state.user) &&
+        Boolean(state.accessToken) &&
+        (!state.expiresAt || state.expiresAt > Date.now());
+
+      if (
+        hasValidSession &&
+        (!err || err.status === 503 || err.status === 504 || state.accessToken?.startsWith('demo-token-'))
+      ) {
+        return state.accessToken;
+      }
+
       sessionStore.setState({ status: 'anonymous', accessToken: null, user: null });
       setRefreshToken(null);
       return null;
@@ -343,10 +502,8 @@ export async function refreshSession(): Promise<string | null> {
   return refreshInFlight;
 }
 
-// Wire single-flight refresh into http client
 setRefreshHandler(() => refreshSession());
 
-// Wire account suspended handler
 setOnSuspendedHandler(() => {
   sessionStore.setState({ status: 'suspended', accessToken: null });
 });
@@ -355,13 +512,27 @@ export async function initSession(): Promise<void> {
   if (state.status === 'authenticated' && state.user) {
     if (state.accessToken) {
       scheduleProactiveRefresh(state.accessToken);
+      // Enrich displayName/email in background if missing or generic fallback ("User")
+      if (
+        state.user.displayName === 'User' ||
+        state.user.displayName === 'Owner' ||
+        !state.user.email
+      ) {
+        identityApi
+          .getMe()
+          .then((freshUser) => {
+            if (freshUser && freshUser.id !== 'anonymous') {
+              sessionStore.setState({ user: freshUser });
+            }
+          })
+          .catch(() => {});
+      }
     }
     return;
   }
 
   sessionStore.setState({ status: 'loading' });
 
-  // If we already have an in-memory access token, fetch user profile
   if (state.accessToken) {
     try {
       const user = await identityApi.getMe();
@@ -383,21 +554,6 @@ export async function initSession(): Promise<void> {
   try {
     const token = await refreshSession();
     if (!token) {
-      // If refresh fails in mock mode, attempt mock user
-      if (import.meta.env.VITE_USE_MOCKS === 'true') {
-        try {
-          const user = await identityApi.getMe();
-          sessionStore.setState({
-            status: 'authenticated',
-            user,
-            accessToken: 'session-token-' + user.id,
-            expiresAt: Date.now() + 900000,
-          });
-          return;
-        } catch {
-          // ignore
-        }
-      }
       sessionStore.setState({ status: 'anonymous', user: null, accessToken: null });
     }
   } catch (err: any) {
@@ -429,7 +585,15 @@ export async function loginWithCredentials(
 
     setAccessToken(token);
 
-    const user = data.user;
+    let user = data.user;
+    if (!user || user.id === 'anonymous' || user.displayName === 'User') {
+      try {
+        user = await identityApi.getMe();
+      } catch {
+        // fallback to adapted user
+      }
+    }
+
     if (user.role === 'freelancer') {
       redirectToWorkspace(token, data.refreshToken, user);
       return;
@@ -466,6 +630,7 @@ export async function logout(): Promise<void> {
   setAccessToken(null);
   setRefreshToken(null);
   clearDraft();
+  clearPersistedSession();
 
   sessionStore.setState({
     status: 'anonymous',
@@ -483,6 +648,7 @@ export function handleSessionExpired(): void {
 
   setAccessToken(null);
   setRefreshToken(null);
+  clearPersistedSession();
 
   sessionStore.setState({
     status: 'expired',

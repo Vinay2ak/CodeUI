@@ -11,7 +11,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import type { Match } from '../../../services/talent/types';
-import { Button } from '../../../components/ui/Button';
+import { Button } from '../../../components/ui/button';
 
 interface MatchCardProps {
   match: Match;

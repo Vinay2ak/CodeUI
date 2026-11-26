@@ -5,7 +5,18 @@ export function adaptPaymentState(rawState?: string): PaymentState {
   if (s === 'held') return 'held';
   if (s === 'release_pending' || s === 'pending_release') return 'release_pending';
   if (s === 'released') return 'released';
+  if (s === 'unrequested') return 'unrequested';
+  if (s === 'refunded') return 'refunded';
   return 'authorized';
+}
+
+export function adaptProjectPayment(raw: any): import('./types').ProjectPayment {
+  return {
+    state: adaptPaymentState(raw?.state || raw?.status),
+    amount: typeof raw?.amount === 'number' ? raw.amount : Number(raw?.amount) || 0,
+    currency: 'INR',
+    developerName: raw?.developerName || raw?.developer_name || raw?.freelancerName || 'Developer',
+  };
 }
 
 export function adaptPayment(raw: any): Payment {

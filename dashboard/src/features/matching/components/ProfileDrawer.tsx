@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { getFreelancer } from '../../../services/talent/api';
 import type { FreelancerProfile } from '../../../services/talent/types';
-import { Button } from '../../../components/ui/Button';
+import { Button } from '../../../components/ui/button';
 
 interface ProfileDrawerProps {
   freelancerId: string | null;

@@ -1,7 +1,9 @@
 import React from 'react';
 import { RefreshCw, AlertCircle, Database } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { Skeleton } from '../ui/Skeleton';
+import { Button } from '../ui/button';
+import { Skeleton } from '../ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
 import { ErrorBoundary } from '../../app/ErrorBoundary';
 import { ApiError } from '../../lib/errors';
 
@@ -37,38 +39,48 @@ const PanelContent: React.FC<PanelProps> = ({
   className = '',
 }) => {
   const formattedTime = updatedAt
-    ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    ? new Date(updatedAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
     : null;
 
-  const correlationId = (error as ApiError)?.correlationId || (error as any)?.correlation_id;
+  const correlationId =
+    (error as ApiError)?.correlationId || (error as any)?.correlation_id;
 
   return (
-    <section
+    <Card
       id={id}
       aria-labelledby={`${id}-heading`}
-      className={`rounded-lg bg-surface border border-border shadow-sm flex flex-col ${className}`}
+      className={`rounded-2xl bg-card border-border shadow-sm flex flex-col overflow-hidden ${className}`}
     >
-      {/* Panel Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-2.5">
-          <h2 id={`${id}-heading`} className="text-base font-semibold text-text">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 px-6 py-4 space-y-0 border-b border-border">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <CardTitle
+            id={`${id}-heading`}
+            className="text-base font-semibold text-foreground"
+          >
             {title}
-          </h2>
-          <span className="font-mono text-xs px-2 py-0.5 rounded bg-surface-raised text-text-muted border border-border">
+          </CardTitle>
+          <Badge
+            variant="secondary"
+            className="font-normal text-[11px] text-muted-foreground border-border"
+          >
             {serviceName}
-          </span>
+          </Badge>
         </div>
 
         <div className="flex items-center gap-2.5 sm:gap-3">
           {actions}
           {formattedTime && (
-            <span className="text-xs text-text-muted hidden md:inline">
-              Updated at {formattedTime}
+            <span className="text-xs text-muted-foreground hidden md:inline font-mono tabular-nums">
+              Updated {formattedTime}
             </span>
           )}
           {onRefresh && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={onRefresh}
               disabled={isLoading || isRefreshing}
@@ -76,16 +88,17 @@ const PanelContent: React.FC<PanelProps> = ({
               className="text-xs"
             >
               <RefreshCw
-                className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`}
+                className={`w-3.5 h-3.5 ${
+                  isRefreshing ? 'animate-spin text-accent' : ''
+                }`}
               />
-              <span className="hidden sm:inline ml-1">Refresh</span>
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
           )}
         </div>
-      </div>
+      </CardHeader>
 
-      {/* Panel Body */}
-      <div className="p-5 flex-1 flex flex-col justify-center min-h-[160px]">
+      <CardContent className="p-6 flex-1 flex flex-col justify-center min-h-[160px]">
         {isLoading ? (
           <div className="space-y-3 py-2" role="status" aria-label="Loading panel content">
             <Skeleton height={24} width="40%" />
@@ -96,17 +109,17 @@ const PanelContent: React.FC<PanelProps> = ({
         ) : error ? (
           <div
             role="alert"
-            className="flex flex-col items-center justify-center text-center p-6 gap-3 rounded-md bg-surface-raised/40 border border-danger/30"
+            className="flex flex-col items-center justify-center text-center p-6 gap-3 rounded-xl bg-secondary/40 border border-danger/30"
           >
-            <div className="w-10 h-10 rounded-full bg-danger/15 text-danger flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-danger/10 text-danger flex items-center justify-center">
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-medium text-text">
+              <p className="text-sm font-medium text-foreground">
                 {error.message || 'Failed to load panel data'}
               </p>
               {correlationId && (
-                <p className="font-mono text-xs text-text-muted mt-1 select-all">
+                <p className="font-mono text-xs text-muted-foreground mt-1 select-all">
                   Reference: {correlationId}
                 </p>
               )}
@@ -118,21 +131,21 @@ const PanelContent: React.FC<PanelProps> = ({
                 onClick={onRefresh}
                 className="mt-1"
               >
-                <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                <RefreshCw className="w-3.5 h-3.5" />
                 Retry
               </Button>
             )}
           </div>
         ) : isEmpty ? (
-          <div className="py-12 flex flex-col items-center justify-center text-center text-text-muted gap-2">
+          <div className="py-12 flex flex-col items-center justify-center text-center text-muted-foreground gap-2">
             <Database className="w-8 h-8 opacity-40" />
             <p className="text-sm font-medium">{emptyMessage}</p>
           </div>
         ) : (
           children
         )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -143,4 +156,3 @@ export const Panel: React.FC<PanelProps> = (props) => {
     </ErrorBoundary>
   );
 };
-

@@ -1,7 +1,7 @@
 import React from 'react';
 import { HelpCircle, ArrowLeft } from 'lucide-react';
 import { useSession } from '../features/session/session';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 
 export const NotFound: React.FC = () => {
   const { user } = useSession();

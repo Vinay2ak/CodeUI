@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   RefreshCw,
@@ -20,7 +20,15 @@ import { ProjectSummaryCard } from './components/ProjectSummaryCard';
 import { MatchCard } from './components/MatchCard';
 import { ProfileDrawer } from './components/ProfileDrawer';
 import { HowWeRankPopover } from './components/HowWeRankPopover';
-import { Button } from '../../components/ui/Button';
+import { ProjectBriefCard } from '../ai-brief/components/ProjectBriefCard';
+import { Button } from '../../components/ui/button';
+import { Select, type SelectOption } from '../../components/ui/Select/index';
+
+const SORT_OPTIONS: SelectOption[] = [
+  { value: 'best', label: 'Best match' },
+  { value: 'price', label: 'Price: low to high' },
+  { value: 'availability', label: 'Availability', tone: 'success' },
+];
 
 export const ProjectMatchesPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -248,7 +256,28 @@ export const ProjectMatchesPage: React.FC = () => {
           <div className="h-10 bg-surface-raised rounded" />
         </div>
       ) : project ? (
-        <ProjectSummaryCard project={project} />
+        <>
+          <ProjectSummaryCard project={project} />
+          {project.status === 'in_review' && (
+            <div className="p-6 rounded-xl border border-primary/30 bg-primary/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+                  <h3 className="text-base font-bold text-text">Submission ready for review</h3>
+                </div>
+                <p className="text-xs text-text-muted max-w-xl">
+                  The developer has submitted their work and automated tests are complete. Review code changes, test logs, and advisory AI scorecard to approve or request changes.
+                </p>
+              </div>
+              <Link to={`/owner/projects/${project.id}/review`} className="shrink-0">
+                <Button variant="primary" size="md">
+                  Review submission
+                </Button>
+              </Link>
+            </div>
+          )}
+          <ProjectBriefCard projectId={project.id} />
+        </>
       ) : null}
 
       {/* Section 2: Matches Section */}
@@ -269,19 +298,19 @@ export const ProjectMatchesPage: React.FC = () => {
           {/* Sort & Refresh */}
           <div className="flex items-center gap-3 self-start md:self-auto flex-wrap">
             <div className="flex items-center gap-2 text-xs">
-              <label htmlFor="sort-select" className="text-text-muted font-medium">
+              <label id="sort-select-label" className="text-text-muted font-medium">
                 Sort by:
               </label>
-              <select
-                id="sort-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-2.5 py-1.5 rounded-lg border border-border bg-surface text-text text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="best">Best match</option>
-                <option value="price">Price: low to high</option>
-                <option value="availability">Availability</option>
-              </select>
+              <div className="w-44">
+                <Select
+                  id="sort-select"
+                  value={sortBy}
+                  onChange={(val) => setSortBy(val as SortOption)}
+                  options={SORT_OPTIONS}
+                  size="sm"
+                  aria-labelledby="sort-select-label"
+                />
+              </div>
             </div>
 
             <Button

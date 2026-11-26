@@ -9,7 +9,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { DeveloperProfile } from './types';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
 
 interface DeveloperCardProps {
   developer: DeveloperProfile;

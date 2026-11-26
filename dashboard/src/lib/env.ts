@@ -12,6 +12,9 @@ export interface AppEnv {
   VITE_WS_URL: string;
   VITE_DEV_TOOLS: boolean;
   VITE_GRAFANA_URL: string;
+  VITE_FEATURE_AI_BRIEF?: string;
+  VITE_DRAFT_PUBLISH?: string;
+  VITE_FEATURE_AI_VERIFICATION?: string;
 }
 
 function parseEnv(): AppEnv {
@@ -71,6 +74,8 @@ function parseEnv(): AppEnv {
     VITE_WS_URL,
     VITE_DEV_TOOLS,
     VITE_GRAFANA_URL,
+    VITE_FEATURE_AI_BRIEF: metaEnv.VITE_FEATURE_AI_BRIEF !== undefined ? String(metaEnv.VITE_FEATURE_AI_BRIEF) : undefined,
+    VITE_DRAFT_PUBLISH: metaEnv.VITE_DRAFT_PUBLISH !== undefined ? String(metaEnv.VITE_DRAFT_PUBLISH) : undefined,
   };
 }
 

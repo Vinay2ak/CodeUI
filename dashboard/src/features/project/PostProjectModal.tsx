@@ -10,12 +10,18 @@ import {
   ShieldCheck,
   UserCheck,
 } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
+import { Select, type SelectOption } from '../../components/ui/Select/index';
 import { projectApi } from '../../services/project/api';
 import { CreateProjectPayload, ProjectStatus } from '../../services/project/types';
 import { useToast } from '../../components/ui/Toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { DeveloperProfile } from '../talent/types';
+
+const PROJECT_STATUS_OPTIONS: SelectOption[] = [
+  { value: 'in_progress', label: 'Ready for Assignment', tone: 'success' },
+  { value: 'draft', label: 'Draft (Private)', tone: 'muted' },
+];
 
 interface PostProjectModalProps {
   isOpen: boolean;
@@ -308,17 +314,15 @@ export const PostProjectModal: React.FC<PostProjectModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-text-muted mb-1.5">
+              <label id="post-project-status-label" className="block text-xs font-semibold text-text-muted mb-1.5">
                 Initial Status
               </label>
-              <select
+              <Select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as ProjectStatus)}
-                className="w-full px-3 py-2 rounded-md bg-surface-raised border border-border text-sm text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-              >
-                <option value="in_progress">Ready for Assignment</option>
-                <option value="draft">Draft (Private)</option>
-              </select>
+                onChange={(val) => setStatus(val as ProjectStatus)}
+                options={PROJECT_STATUS_OPTIONS}
+                aria-labelledby="post-project-status-label"
+              />
             </div>
           </div>
 

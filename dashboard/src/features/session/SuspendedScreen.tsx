@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldAlert, LogOut } from 'lucide-react';
 import { logout } from './session';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
 
 export const SuspendedScreen: React.FC = () => {
   return (

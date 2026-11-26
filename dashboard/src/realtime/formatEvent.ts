@@ -38,6 +38,14 @@ export function formatEventSentence(event: CbEvent): string {
       const data = event.data as ServiceDegradedData;
       return `Service ${data.service} is ${data.status}`;
     }
+    case 'submission.status_changed': {
+      const data = event.data as any;
+      if (data?.status === 'in_review') {
+        const title = data.projectTitle || data.title || 'Project';
+        return `Submission ready for review: “${title}”`;
+      }
+      return `Submission ${data?.status || 'updated'}`;
+    }
     default:
       return `${event.type}: ${JSON.stringify(event.data)}`;
   }

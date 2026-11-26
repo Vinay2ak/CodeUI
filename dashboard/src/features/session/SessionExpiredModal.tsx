@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { LogIn, Clock } from 'lucide-react';
 import { env } from '../../lib/env';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
 
 export const SessionExpiredModal: React.FC = () => {
   const buttonRef = useRef<HTMLButtonElement>(null);

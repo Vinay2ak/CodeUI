@@ -10,7 +10,7 @@ interface SkillsTagInputProps {
 }
 
 export const SkillsTagInput: React.FC<SkillsTagInputProps> = ({
-  skills,
+  skills = [],
   onChange,
   max = 8,
   error,

@@ -15,7 +15,7 @@ export interface Payment {
   id: string;
   projectTitle: string;
   amount: number;
-  state: 'authorized' | 'held' | 'release_pending' | 'released';
+  state: 'authorized' | 'held' | 'release_pending' | 'released' | 'unrequested' | 'refunded';
 }
 
 export interface PaymentsSummary {
@@ -54,11 +54,11 @@ export interface ServiceHealth {
 export const initialProjects: Project[] = [
   {
     id: 'proj-1',
-    title: 'Payments webhook retries',
+    title: 'Fix duplicate payment webhook retries',
     repo: 'acme/payments-api',
     freelancerName: 'Ravi Freelancer',
-    status: 'in_progress',
-    budget: 1200,
+    status: 'in_review',
+    budget: 4500,
     updatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
   },
   {

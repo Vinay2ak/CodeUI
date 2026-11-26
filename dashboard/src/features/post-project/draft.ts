@@ -1,8 +1,17 @@
 import { PostProjectFormData } from './schema';
+import type { AiDeveloperBrief, RepoInfo, ProjectSnapshot } from '../ai-brief/types';
 
 const DRAFT_KEY = 'cb-post-project-draft-v1';
 
-export function saveDraft(values: Partial<PostProjectFormData>): void {
+export interface PostProjectDraftData extends Partial<PostProjectFormData> {
+  aiBrief?: AiDeveloperBrief | null;
+  analyzedHash?: string | null;
+  projectId?: string | null;
+  repo?: RepoInfo | null;
+  snapshot?: ProjectSnapshot | null;
+}
+
+export function saveDraft(values: PostProjectDraftData): void {
   if (typeof window === 'undefined' || !window.sessionStorage) return;
   try {
     window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(values));
@@ -11,7 +20,7 @@ export function saveDraft(values: Partial<PostProjectFormData>): void {
   }
 }
 
-export function loadDraft(): Partial<PostProjectFormData> | null {
+export function loadDraft(): PostProjectDraftData | null {
   if (typeof window === 'undefined' || !window.sessionStorage) return null;
   try {
     const raw = window.sessionStorage.getItem(DRAFT_KEY);

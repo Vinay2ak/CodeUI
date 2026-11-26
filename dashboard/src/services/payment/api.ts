@@ -1,6 +1,6 @@
 import { http } from '../../lib/http';
-import { PaymentsSummary } from './types';
-import { adaptPaymentsSummary } from './adapters';
+import { PaymentsSummary, ProjectPayment } from './types';
+import { adaptPaymentsSummary, adaptProjectPayment } from './adapters';
 
 export const paymentApi = {
   getSummary: async (): Promise<PaymentsSummary> => {
@@ -16,5 +16,26 @@ export const paymentApi = {
     }
 
     return adaptPaymentsSummary(raw);
+  },
+
+  getProjectPayment: async (projectId: string): Promise<ProjectPayment> => {
+    const raw = await http.get<any>(`/api/v1/projects/${projectId}/payment`);
+    return adaptProjectPayment(raw);
+  },
+
+  releasePayment: async (
+    projectId: string,
+    idempotencyKey?: string
+  ): Promise<{ state: 'released' }> => {
+    const headers: Record<string, string> = {};
+    if (idempotencyKey) {
+      headers['Idempotency-Key'] = idempotencyKey;
+    }
+    const res = await http.post<{ state: 'released' }>(
+      `/api/v1/projects/${projectId}/payment/release`,
+      {},
+      { headers }
+    );
+    return res;
   },
 };

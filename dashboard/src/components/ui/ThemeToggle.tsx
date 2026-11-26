@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { getInitialTheme, setTheme, Theme } from '../../lib/theme';
+import { Button } from './button';
 
 export const ThemeToggle: React.FC = () => {
   const [theme, setCurrentTheme] = useState<Theme>('dark');
 
   useEffect(() => {
-    setCurrentTheme(getInitialTheme());
+    const initial = getInitialTheme();
+    setTheme(initial);
+    setCurrentTheme(initial);
   }, []);
 
   const handleToggle = () => {
@@ -19,15 +22,20 @@ export const ThemeToggle: React.FC = () => {
   const label = isDark ? 'Switch to light theme' : 'Switch to dark theme';
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="icon"
       onClick={handleToggle}
       aria-label={label}
       title={label}
-      className="p-2 rounded-md border border-border bg-surface text-text-muted hover:text-text hover:bg-surface-raised transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary cursor-pointer"
+      className="h-9 w-9 rounded-xl border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary transition-all active:scale-[0.98]"
     >
-      {isDark ? <Sun className="w-4 h-4 text-warning" /> : <Moon className="w-4 h-4 text-primary" />}
-    </button>
+      {isDark ? (
+        <Sun className="w-4 h-4 text-accent transition-transform duration-200" />
+      ) : (
+        <Moon className="w-4 h-4 text-primary transition-transform duration-200" />
+      )}
+    </Button>
   );
 };
-

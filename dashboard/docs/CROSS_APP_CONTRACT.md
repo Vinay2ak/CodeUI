@@ -200,11 +200,224 @@ All endpoints run under `/api/v1` with Bearer token authentication, camelCase JS
 
 ---
 
-## 8. Analytics (Grafana embed)
+## 8. Analytics (Grafana panels)
 - Grafana runs on the backend machine at port 3001.
-- Dashboard UID: `codebridge-analytics`, path: `/d/codebridge-analytics/codebridge-platform-analytics`, orgId: 1.
-- Embedding and anonymous viewing are enabled on Grafana (`GF_SECURITY_ALLOW_EMBEDDING=true` and `GF_AUTH_ANONYMOUS_ENABLED=true`), so the embedded iframe requires no authentication prompts and no extra headers.
-- Full dashboard URL configured via environment variable `VITE_GRAFANA_URL` (format: `http://<backend-host>:3001/d/codebridge-analytics/codebridge-platform-analytics?orgId=1&kiosk`).
-- The application never hardcodes any host, IP, or port in source code. When `VITE_GRAFANA_URL` is omitted or empty, the Analytics page displays a neutral "not configured" guidance state.
-- Range (`from=now-<range>&to=now`), auto-refresh (`refresh=<value>`), and theme (`theme=dark|light`) query parameters are dynamically managed by the client adapter.
+- Dashboard UID: `codebridge-analytics`, slug: `codebridge-platform-analytics`, orgId: 1.
+- Embedding and anonymous viewing are enabled on Grafana (`GF_SECURITY_ALLOW_EMBEDDING=true` and `GF_AUTH_ANONYMOUS_ENABLED=true`), so panel iframes require no authentication prompts or login.
+- Configured via environment variable `VITE_GRAFANA_URL` in `.env`. The frontend never hardcodes any host, IP, or port in source code.
+- Rather than a separate full-dashboard iframe with outer Grafana chrome, individual panels are embedded directly using `/d-solo/<uid>/<slug>?orgId=1&panelId=<id>` within our native cards and grid layout inside the Admin Overview.
+- Discovered panel IDs and placement specs are managed in `src/features/overview-analytics/panels.config.ts`.
+- Template variable `owner_id` (label "Project Owner", `includeAll: true`) is passed dynamically as `var-owner_id=$__all` to avoid hardcoding individual owner names.
+- Range (`from=now-<range>&to=now`), refresh (`refresh=1m`), and theme (`theme=dark|light`) parameters are dynamically attached to each panel URL.
+
+---
+
+## 9. AI developer brief
+
+All endpoints run under `/api/v1` with Bearer token authentication, camelCase JSON payloads, and are restricted to users with the `owner` role.
+
+### Project Service Endpoints
+- `POST /projects` (Header: `Idempotency-Key`): Accepts optional `status: "draft" | "open"` (default `"open"`).
+- `PATCH /projects/{id}`: Updates draft project fields before final publication.
+- `POST /projects/{id}/publish`: Moves a draft project from `"draft"` to `"open"`.
+- `POST /projects/{id}/brief`: Saves a `ConfirmedBrief`, storing it in `project.aiVerification.confirmedBrief`. Returns `200` or `201` with the saved brief.
+- `GET /projects/{id}/brief`: Returns the `ConfirmedBrief` for the project, or `404` if none exists.
+
+### GitHub Service Endpoints
+- `POST /github/repos/connect`:
+  - Request: `{ "repoUrl": "string" }`
+  - Response: `{ "repoFullName": "string", "defaultBranch": "string", "isPrivate": boolean, "permissions": { "read": true, "write": false, "admin": false }, "headCommitSha": "string", "languages": ["string"], "stars": number }`
+- `GET /github/repos/{owner}/{repo}/status`:
+  - Response: same shape as connect; used for verifying read-only access and the latest commit SHA.
+
+### Code-Context Service Endpoints
+- `POST /code-context/brief-jobs`:
+  - Request:
+    ```json
+    {
+      "repoFullName": "string",
+      "commitSha": "string",
+      "inputsHash": "string",
+      "projectContext": {
+        "title": "string",
+        "description": "string",
+        "blockerType": "string",
+        "stacks": ["string"],
+        "specialties": ["string"]
+      }
+    }
+    ```
+  - Response: `{ "jobId": "string", "status": "queued" | "running", "currentStage": "indexing" | "hypothesizing" | "planning", "createdAt": "string" }`
+- `GET /code-context/brief-jobs/{jobId}`:
+  - Response: `{ "jobId": "string", "status": "queued" | "running" | "completed" | "failed", "currentStage": "indexing" | "hypothesizing" | "planning", "brief": AiDeveloperBrief, "error": { "code": "string", "message": "string", "retryable": boolean } }`
+- `POST /code-context/brief-jobs/{jobId}/cancel`:
+  - Idempotent cancellation returning `{ "cancelled": true }`.
+
+---
+
+## 10. Review and Payment Verification
+
+All endpoints run under `/api/v1` with Bearer token authentication, camelCase JSON payloads, and are restricted to users with the `owner` role for the associated project. Money is denominated in INR (Indian Rupee).
+
+### Review Service Endpoints
+
+#### `GET /projects/{id}/submissions/current`
+- **Responses:**
+  - `200 OK`:
+    ```json
+    {
+      "submissionId": "string",
+      "version": 1,
+      "versionCount": 1,
+      "status": "none" | "in_review" | "changes_requested" | "approved",
+      "submittedAt": "string (ISO8601)",
+      "developerName": "string",
+      "summary": "string",
+      "notes": "string",
+      "commitSha": "string",
+      "feedback": "string | null",
+      "decidedAt": "string (ISO8601) | null"
+    }
+    ```
+  - `403 Forbidden`: `{"code": "FORBIDDEN"}`
+  - `404 Not Found`: `{"code": "NOT_FOUND"}`
+
+#### `POST /projects/{id}/review`
+- **Headers:** `Idempotency-Key: <uuid>` (required for safe retries)
+- **Request Body:**
+  ```json
+  {
+    "submissionId": "string",
+    "decision": "approve" | "changes_requested",
+    "feedback": "string (10-1000 chars, required for changes_requested)",
+    "flaggedItems": ["string"]
+  }
+  ```
+- **Responses:**
+  - `200 OK`: `{ "submissionId": "string", "status": "approved" | "changes_requested" }`
+  - `403 Forbidden`: Forbidden
+  - `404 Not Found`: Submission or project not found
+  - `409 Conflict`: Submission superseded or not in reviewable state
+  - `422 Unprocessable Entity`: Validation failure
+
+---
+
+### Verification Service Endpoints
+
+#### `GET /submissions/{id}/automated-run`
+- **Responses:**
+  - `200 OK`:
+    ```json
+    {
+      "runId": "string",
+      "status": "passed" | "failed" | "running",
+      "startedAt": "string (ISO8601)",
+      "finishedAt": "string (ISO8601) | null",
+      "durationMs": 12000,
+      "commitSha": "string",
+      "checks": [
+        {
+          "id": "chk-1",
+          "name": "Dependency installation",
+          "command": "npm ci",
+          "exitCode": 0,
+          "durationMs": 3500,
+          "status": "passed" | "failed" | "running",
+          "summary": "clean install",
+          "logTail": ["added 450 packages in 3.4s"]
+        }
+      ]
+    }
+    ```
+  - `404 Not Found`: No run found for submission.
+
+#### `GET /submissions/{id}/automated-run/checks/{checkId}/log?limit=2000`
+- **Responses:**
+  - `200 OK`: Plain text log (`text/plain`), up to the specified line limit.
+
+#### `GET /submissions/{id}/ai-verification`
+- **Responses:**
+  - `200 OK`:
+    ```json
+    {
+      "reportId": "string",
+      "submissionId": "string",
+      "generatedAt": "string (ISO8601)",
+      "summary": "string (max 400 chars)",
+      "confidence": "high" | "medium" | "low",
+      "criteria": [
+        {
+          "id": "crit-1",
+          "label": "string",
+          "status": "met" | "partially_met" | "not_met" | "unclear",
+          "reasoning": "string (max 400 chars)",
+          "evidence": [
+            {
+              "path": "string",
+              "lines": [10, 25],
+              "snippet": "string (max 400 chars)"
+            }
+          ]
+        }
+      ],
+      "risks": [
+        {
+          "severity": "high" | "medium" | "low",
+          "title": "string",
+          "description": "string (max 300 chars)",
+          "recommendation": "string (max 300 chars)"
+        }
+      ]
+    }
+    ```
+  - `404 Not Found`: AI verification report not yet generated.
+
+#### `POST /submissions/{id}/ai-verification`
+- Triggers or reruns AI verification for the submission.
+
+---
+
+### Payment Service Endpoints
+
+#### `GET /projects/{id}/payment`
+- **Responses:**
+  - `200 OK`:
+    ```json
+    {
+      "paymentId": "string",
+      "projectId": "string",
+      "amount": 4500,
+      "currency": "INR",
+      "state": "held" | "released" | "refunded" | "disputed",
+      "heldAt": "string (ISO8601)",
+      "releasedAt": "string (ISO8601) | null",
+      "milestoneTitle": "string"
+    }
+    ```
+  - `404 Not Found`: Payment record not found.
+
+#### `POST /projects/{id}/payment/release`
+- **Headers:** `Idempotency-Key: <uuid>` (required for safe payment release)
+- **Request Body:**
+  ```json
+  {
+    "paymentId": "string",
+    "amount": 4500
+  }
+  ```
+- **Responses:**
+  - `200 OK`: `{ "paymentId": "string", "state": "released", "releasedAt": "string (ISO8601)" }`
+  - `400 Bad Request`: Invalid state or amount
+  - `409 Conflict`: Payment already released or refunded
+
+---
+
+### Realtime Events
+- **`submission.status_changed`**:
+  - `occurredAt`: ISO8601 timestamp
+  - `source`: `"review-service"`
+  - `data`: `{ "projectId": "string", "submissionId": "string", "from": "string", "to": "string" }`
+  - Authorized Roles: `owner`, `admin`
+
+
 

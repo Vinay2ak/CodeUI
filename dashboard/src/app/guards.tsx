@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useSession, redirectToWorkspace } from '../features/session/session';
-import { Skeleton } from '../components/ui/Skeleton';
+import { Skeleton } from '../components/ui/skeleton';
 import { SuspendedScreen } from '../features/session/SuspendedScreen';
 import { SessionExpiredModal } from '../features/session/SessionExpiredModal';
 import { env } from '../lib/env';

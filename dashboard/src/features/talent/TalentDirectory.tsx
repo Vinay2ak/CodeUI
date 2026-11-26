@@ -11,7 +11,7 @@ import { DeveloperProfile, TalentFilterCategory } from './types';
 import { fetchHybridTalent } from './talentData';
 import { DeveloperCard } from './DeveloperCard';
 import { DeveloperProfileDrawer } from './DeveloperProfileDrawer';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/ui/button';
 
 interface TalentDirectoryProps {
   onSelectDeveloperForProject: (dev: DeveloperProfile) => void;

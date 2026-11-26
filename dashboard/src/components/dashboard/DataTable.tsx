@@ -1,4 +1,13 @@
 import React from 'react';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
 
 export interface Column<T> {
   header: string;
@@ -14,6 +23,7 @@ export interface DataTableProps<T> {
   keyExtractor: (row: T) => string;
   className?: string;
   rowClassName?: (row: T) => string;
+  onRowClick?: (row: T) => void;
 }
 
 export function DataTable<T>({
@@ -23,31 +33,37 @@ export function DataTable<T>({
   keyExtractor,
   className = '',
   rowClassName,
+  onRowClick,
 }: DataTableProps<T>): JSX.Element {
   return (
-    <div className={`overflow-x-auto w-full rounded-md border border-border ${className}`}>
-      <table className="w-full text-left text-sm divide-y divide-border">
-        <caption className="sr-only">{caption}</caption>
-        <thead className="bg-surface-raised/70 text-xs font-semibold text-text-muted uppercase tracking-wider">
-          <tr>
+    <div
+      className={`overflow-x-auto w-full rounded-2xl border border-border bg-card ${className}`}
+    >
+      <Table className="w-full text-sm">
+        <TableCaption className="sr-only">{caption}</TableCaption>
+        <TableHeader className="bg-secondary/60">
+          <TableRow className="border-b border-border hover:bg-transparent">
             {columns.map((col, idx) => (
-              <th
+              <TableHead
                 key={idx}
                 scope="col"
-                className={`px-4 py-3 ${col.className || ''}`}
+                className={`px-4 py-3 text-xs font-semibold text-muted-foreground ${col.className || ''}`}
               >
                 {col.header}
-              </th>
+              </TableHead>
             ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border bg-surface">
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {data.map((row) => {
             const extraClasses = rowClassName ? rowClassName(row) : '';
             return (
-              <tr
+              <TableRow
                 key={keyExtractor(row)}
-                className={`hover:bg-surface-raised/40 transition-colors ${extraClasses}`}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={`border-b border-border/70 last:border-0 hover:bg-secondary/40 transition-colors ${
+                  onRowClick ? 'cursor-pointer' : ''
+                } ${extraClasses}`}
               >
                 {columns.map((col, idx) => {
                   const content =
@@ -59,31 +75,30 @@ export function DataTable<T>({
 
                   if (col.isRowHeader) {
                     return (
-                      <th
+                      <TableHead
                         key={idx}
                         scope="row"
-                        className={`px-4 py-3 font-medium text-text whitespace-nowrap ${col.className || ''}`}
+                        className={`px-4 py-3.5 font-medium text-foreground whitespace-nowrap ${col.className || ''}`}
                       >
                         {content}
-                      </th>
+                      </TableHead>
                     );
                   }
 
                   return (
-                    <td
+                    <TableCell
                       key={idx}
-                      className={`px-4 py-3 text-text-muted whitespace-nowrap ${col.className || ''}`}
+                      className={`px-4 py-3.5 text-muted-foreground whitespace-nowrap ${col.className || ''}`}
                     >
                       {content}
-                    </td>
+                    </TableCell>
                   );
                 })}
-              </tr>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
-

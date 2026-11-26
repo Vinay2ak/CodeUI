@@ -42,6 +42,16 @@ export interface ServiceDegradedData {
   status: 'up' | 'degraded' | 'down';
 }
 
+export interface SubmissionStatusChangedData {
+  projectId: string;
+  submissionId: string;
+  status: 'none' | 'in_review' | 'changes_requested' | 'approved';
+  title?: string;
+  projectTitle?: string;
+  feedback?: string | null;
+  flaggedItems?: string[];
+}
+
 export type CbEventData =
   | ProjectPostedData
   | UserRegisteredData
@@ -50,6 +60,7 @@ export type CbEventData =
   | PaymentReleasedData
   | TaskAssignedData
   | ServiceDegradedData
+  | SubmissionStatusChangedData
   | Record<string, unknown>;
 
 export interface CbEvent<T = CbEventData> {
@@ -62,6 +73,7 @@ export interface CbEvent<T = CbEventData> {
     | 'payment.released'
     | 'task.assigned'
     | 'service.degraded'
+    | 'submission.status_changed'
     | string;
   occurredAt: string;
   source: string;

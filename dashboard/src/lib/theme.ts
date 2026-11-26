@@ -21,6 +21,7 @@ export function setTheme(theme: Theme): void {
     // localStorage unavailable
   }
   document.documentElement.setAttribute('data-theme', theme);
+  document.documentElement.classList.toggle('dark', theme === 'dark');
 }
 
 export function toggleTheme(): Theme {
@@ -29,4 +30,3 @@ export function toggleTheme(): Theme {
   setTheme(next);
   return next;
 }
-

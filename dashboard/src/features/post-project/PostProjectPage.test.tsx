@@ -18,9 +18,10 @@ describe('PostProjectPage', () => {
       </QueryClientProvider>
     );
 
-    expect(screen.getByText('Post a new project')).toBeDefined();
-    expect(screen.getByText('1. Problem & Scope')).toBeDefined();
-    expect(screen.getByText('2. Budget, Timeline & Verification')).toBeDefined();
+    expect(screen.getByText('Post a Technical Problem')).toBeDefined();
+    expect(screen.getByText('What needs fixing?')).toBeDefined();
+    expect(screen.getByText('Technology & Stack')).toBeDefined();
+    expect(screen.getByText('Budget, Timeline & Verification')).toBeDefined();
     expect(screen.getByText('Submit & find developers')).toBeDefined();
   });
 });

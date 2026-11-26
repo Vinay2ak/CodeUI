@@ -14,7 +14,7 @@ export async function httpRequest<T = unknown>(
   options: RequestOptions = {}
 ): Promise<T> {
   const {
-    timeoutMs = 6000,
+    timeoutMs = 3500,
     skipAuth = false,
     _isRetry = false,
     headers: customHeaders = {},
@@ -31,6 +31,10 @@ export async function httpRequest<T = unknown>(
   } else {
     const baseUrl = env.VITE_API_BASE_URL.replace(/\/$/, '');
     url = `${baseUrl}${cleanEndpoint}`;
+  }
+
+  if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null' && !url.startsWith('http')) {
+    url = `${window.location.origin}${url}`;
   }
 
   const startTime = Date.now();
@@ -265,7 +269,7 @@ export async function httpRequest<T = unknown>(
       status: 503,
       code: 'SERVICE_UNAVAILABLE',
       detail: isTimeout
-        ? 'Request timed out after 10 seconds'
+        ? 'Request timed out'
         : err?.message || 'Network request failed',
       correlationId: errorCorrelationId,
     });
@@ -285,6 +289,12 @@ export const http = {
     httpRequest<T>(endpoint, {
       ...options,
       method: 'PUT',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+  patch: <T>(endpoint: string, body?: unknown, options?: RequestOptions) =>
+    httpRequest<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     }),
   delete: <T>(endpoint: string, options?: RequestOptions) =>

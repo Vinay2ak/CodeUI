@@ -17,6 +17,8 @@ export function roleCanSeeEvent(role: UserRole, eventType: string): boolean {
       return role === 'freelancer';
     case 'service.degraded':
       return role === 'admin';
+    case 'submission.status_changed':
+      return role === 'owner' || role === 'admin';
     default:
       return true;
   }

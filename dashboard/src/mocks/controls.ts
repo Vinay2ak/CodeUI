@@ -7,6 +7,11 @@ export interface MockState {
   failingServices: Record<string, boolean>;
   failMatching: boolean;
   matchingDelayMs: number;
+  briefScenario: 'ok' | 'slow' | 'fail';
+  briefDelayMs: number;
+  reviewScenario: 'pass' | 'mixed' | 'fail';
+  failNextRelease: boolean;
+  failAiVerification: boolean;
 }
 
 export const mockState: MockState = {
@@ -19,9 +24,18 @@ export const mockState: MockState = {
     workspace: false,
     admin: false,
     notification: false,
+    github: false,
+    codeContext: false,
+    verification: false,
+    review: false,
   },
   failMatching: false,
   matchingDelayMs: 0,
+  briefScenario: 'ok',
+  briefDelayMs: 0,
+  reviewScenario: 'mixed',
+  failNextRelease: false,
+  failAiVerification: false,
 };
 
 const listeners = new Set<() => void>();
@@ -63,6 +77,41 @@ export function setFailMatching(fail: boolean): void {
 
 export function setMatchingDelay(delayMs: number): void {
   mockState.matchingDelayMs = Math.max(0, delayMs);
+  notifyControlsChanged();
+}
+
+export function setBriefScenario(scenario: 'ok' | 'slow' | 'fail'): void {
+  mockState.briefScenario = scenario;
+  notifyControlsChanged();
+}
+
+export function setBriefDelay(ms: number): void {
+  mockState.briefDelayMs = Math.max(0, ms);
+  notifyControlsChanged();
+}
+
+export function setReviewScenario(scenario: 'pass' | 'mixed' | 'fail'): void {
+  mockState.reviewScenario = scenario;
+  notifyControlsChanged();
+}
+
+export function triggerFailNextRelease(): void {
+  mockState.failNextRelease = true;
+  notifyControlsChanged();
+}
+
+export function setFailAiVerification(fail = true): void {
+  mockState.failAiVerification = fail;
+  notifyControlsChanged();
+}
+
+export function resetReview(): void {
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.removeItem('mock.review.v1');
+  }
+  mockState.reviewScenario = 'mixed';
+  mockState.failNextRelease = false;
+  mockState.failAiVerification = false;
   notifyControlsChanged();
 }
 
@@ -196,6 +245,22 @@ export function emitTestEvent(type: string, data?: Record<string, unknown>): voi
       };
       break;
 
+    case 'submission.status_changed':
+      event = {
+        id,
+        type: 'submission.status_changed',
+        occurredAt,
+        source: 'review-service',
+        correlationId,
+        data: data ?? {
+          projectId: 'proj-1',
+          submissionId: 'sub-webhook-2026',
+          status: 'in_review',
+          projectTitle: initialProjects[0]?.title || 'Fix duplicate payment webhook retries',
+        },
+      };
+      break;
+
     default:
       event = {
         id,
@@ -222,6 +287,12 @@ if (typeof window !== 'undefined') {
     serviceDown: (service: string, down = true) => setServiceFailing(service, down),
     failMatching: (fail = true) => setFailMatching(fail),
     setMatchingDelay: (ms: number) => setMatchingDelay(ms),
+    setBriefScenario: (scenario: 'ok' | 'slow' | 'fail') => setBriefScenario(scenario),
+    setBriefDelay: (ms: number) => setBriefDelay(ms),
+    setReviewScenario: (scenario: 'pass' | 'mixed' | 'fail') => setReviewScenario(scenario),
+    failNextRelease: () => triggerFailNextRelease(),
+    failAiVerification: (fail = true) => setFailAiVerification(fail),
+    resetReview,
     emitEvent: emitTestEvent,
     expireToken,
     setSuspended,

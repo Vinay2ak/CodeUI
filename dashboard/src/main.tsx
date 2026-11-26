@@ -2,8 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/index.css';
+import './components/ui/Select/select.css';
 import { env } from './lib/env';
-import { loginWithCredentials } from './features/session/session';
 
 // Step 4d: Mock-only shortcut for local testing without Sign in app
 if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
@@ -108,21 +108,6 @@ async function bootstrap() {
       <App />
     </React.StrictMode>
   );
-
-  if (!env.VITE_USE_MOCKS && import.meta.env.DEV) {
-    try {
-      const url = new URL(window.location.href);
-      const roleParam = url.searchParams.get('role');
-      if (roleParam === 'owner' || roleParam === 'freelancer') {
-        url.searchParams.delete('role');
-        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : '') + url.hash);
-        const email = roleParam === 'owner' ? 'testowner@codebridge.dev' : 'testfreelancer@codebridge.dev';
-        void loginWithCredentials(email, 'Password123!').catch(() => {});
-      }
-    } catch {
-      // ignore
-    }
-  }
 }
 
 bootstrap().catch(console.error);

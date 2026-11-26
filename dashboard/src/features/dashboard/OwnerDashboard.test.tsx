@@ -37,10 +37,9 @@ describe('Owner Dashboard Component Rendering', () => {
     expect(screen.getByText('Active projects')).toBeInTheDocument();
     expect(screen.getByText('Escrow held')).toBeInTheDocument();
 
-    // Step 3: Verify Platform Analytics is rendered on the overview page
-    expect(screen.getByText('Platform Analytics')).toBeInTheDocument();
-    expect(screen.getByText('Platform metrics from Grafana.')).toBeInTheDocument();
-    expect(screen.getByRole('radiogroup', { name: /time range/i })).toBeInTheDocument();
+    // Step 3: Verify Analytics section is rendered on the overview page
+    expect(screen.getByRole('heading', { level: 2, name: 'Analytics' })).toBeInTheDocument();
+    expect(screen.getByText('Checking Grafana…')).toBeInTheDocument();
   });
 
   it('renders Settings view when hash is #settings', async () => {

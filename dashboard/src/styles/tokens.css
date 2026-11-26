@@ -1,34 +1,103 @@
-:root {
-  --bg: #0B132B;
-  --surface: #1C2541;
-  --surface-raised: #26324F;
-  --border: #3A506B;
-  --text: #EEF2F7;
-  --text-muted: #9FB3C8;
-  --primary: #5BC0DE;
-  --on-primary: #0B132B;
-  --money: #D97706;
-  --on-money: #0B132B;
-  --cream: #F4D6B0;
-  --success: #34D399;
-  --warning: #FBBF24;
-  --danger: #F87171;
-}
-
+:root,
 :root[data-theme="light"] {
-  --bg: #FBF6EE;
-  --surface: #FFFFFF;
-  --surface-raised: #F3EBDD;
-  --border: #E6D9C6;
-  --text: #0B132B;
-  --text-muted: #3A506B;
-  --primary: #1C2541;
-  --on-primary: #FFFFFF;
-  --money: #D97706;
-  --on-money: #0B132B;
-  --cream: #F4D6B0;
-  --success: #047857;
-  --warning: #B45309;
-  --danger: #B91C1C;
+  /* Eye-Friendly Warm Cream Light Mode */
+  --bg: #F5EFE6;
+  --surface: #FAF6F0;
+  --surface-raised: #ECE4D7;
+  --border: #D8CCB8;
+  --text: #241C18;
+  --text-muted: #6A5D53;
+  --primary: #740505;
+  --on-primary: #FAF6F0;
+  --money: #8C6214;
+  --on-money: #FAF6F0;
+  --cream: #FAF6F0;
+  --success: #1F6F4A;
+  --warning: #8C6214;
+  --danger: #9B1C1C;
+
+  /* shadcn/ui semantic variables (Warm Cream Light Mode) */
+  --radius: 0.75rem;
+  --background: 35 44% 93%; /* #F5EFE6 */
+  --foreground: 20 20% 12%; /* #241C18 */
+  --card: 36 56% 96%; /* #FAF6F0 */
+  --card-foreground: 20 20% 12%; /* #241C18 */
+  --popover: 36 56% 96%; /* #FAF6F0 */
+  --popover-foreground: 20 20% 12%; /* #241C18 */
+  --primary-foreground: 36 56% 96%; /* #FAF6F0 */
+  --secondary: 37 35% 88%; /* #ECE4D7 */
+  --secondary-foreground: 20 20% 12%; /* #241C18 */
+  --muted: 37 35% 88%; /* #ECE4D7 */
+  --muted-foreground: 26 12% 37%; /* #6A5D53 */
+  --accent: 39 75% 31%; /* #8C6214 */
+  --accent-foreground: 36 56% 96%; /* #FAF6F0 */
+  --destructive: 0 70% 36%;
+  --destructive-foreground: 36 56% 96%;
+  --input: 38 29% 78%; /* #D8CCB8 */
+  --ring: 39 75% 31%; /* #8C6214 */
+  --chart-1: 0 92% 24%;
+  --chart-2: 39 75% 31%;
+  --chart-3: 152 56% 28%;
+  --chart-4: 26 12% 37%;
+  --chart-5: 38 29% 65%;
+  --sidebar-background: 36 56% 96%; /* #FAF6F0 */
+  --sidebar-foreground: 20 20% 12%; /* #241C18 */
+  --sidebar-primary: 0 92% 24%; /* #740505 */
+  --sidebar-primary-foreground: 36 56% 96%; /* #FAF6F0 */
+  --sidebar-accent: 37 35% 88%; /* #ECE4D7 */
+  --sidebar-accent-foreground: 20 20% 12%; /* #241C18 */
+  --sidebar-border: 38 29% 78%; /* #D8CCB8 */
+  --sidebar-ring: 39 75% 31%; /* #8C6214 */
 }
 
+.dark,
+:root[data-theme="dark"] {
+  /* Luxury Oxblood & Antique Gold Dark Mode */
+  --bg: #0C0808;
+  --surface: #150F0F;
+  --surface-raised: #1E1515;
+  --border: #2D1F1F;
+  --text: #F4ECE2;
+  --text-muted: #9E8F85;
+  --primary: #740505;
+  --on-primary: #F4ECE2;
+  --money: #D4A843;
+  --on-money: #0C0808;
+  --cream: #F4ECE2;
+  --success: #4EA87E;
+  --warning: #D4A843;
+  --danger: #D96B6B;
+
+  /* shadcn/ui semantic variables (Oxblood & Gold Dark Mode) */
+  --radius: 0.75rem;
+  --background: 0 20% 4%; /* #0C0808 */
+  --foreground: 33 43% 92%; /* #F4ECE2 */
+  --card: 0 17% 7%; /* #150F0F */
+  --card-foreground: 33 43% 92%; /* #F4ECE2 */
+  --popover: 0 17% 7%; /* #150F0F */
+  --popover-foreground: 33 43% 92%; /* #F4ECE2 */
+  --primary-foreground: 33 43% 92%; /* #F4ECE2 */
+  --secondary: 0 17% 10%; /* #1E1515 */
+  --secondary-foreground: 33 43% 92%; /* #F4ECE2 */
+  --muted: 0 17% 10%; /* #1E1515 */
+  --muted-foreground: 24 12% 57%; /* #9E8F85 */
+  --accent: 42 63% 55%; /* #D4A843 */
+  --accent-foreground: 0 20% 4%; /* #0C0808 */
+  --destructive: 0 60% 63%;
+  --destructive-foreground: 0 20% 4%;
+  --input: 0 18% 15%; /* #2D1F1F */
+  --ring: 42 63% 55%; /* #D4A843 */
+  --chart-1: 42 63% 55%;
+  --chart-2: 0 92% 24%;
+  --chart-3: 152 36% 48%;
+  --chart-4: 24 12% 57%;
+  --chart-5: 33 43% 72%;
+  --sidebar-background: 0 17% 7%; /* #150F0F */
+  --sidebar-foreground: 33 43% 92%; /* #F4ECE2 */
+  --sidebar-primary: 0 92% 24%; /* #740505 */
+  --sidebar-primary-foreground: 33 43% 92%; /* #F4ECE2 */
+  --sidebar-accent: 0 17% 10%; /* #1E1515 */
+  --sidebar-accent-foreground: 33 43% 92%; /* #F4ECE2 */
+  --sidebar-border: 0 18% 15%; /* #2D1F1F */
+  --sidebar-ring: 42 63% 55%; /* #D4A843 */
+}

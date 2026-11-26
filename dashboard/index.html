@@ -1,25 +1,27 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" class="dark" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeBridge Dashboard</title>
-    <!-- Google Fonts: Inter and JetBrains Mono -->
+    <!-- Google Fonts: Plus Jakarta Sans and JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <script>
       (function() {
         try {
           var saved = localStorage.getItem('cb-theme');
-          var theme = saved || 'dark';
+          var theme = saved === 'light' || saved === 'dark' ? saved : 'dark';
           document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.classList.toggle('dark', theme === 'dark');
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark');
+          document.documentElement.classList.add('dark');
         }
       })();
     </script>
@@ -29,4 +31,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

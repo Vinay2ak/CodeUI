@@ -21,11 +21,17 @@ import {
   setServiceFailing,
   setFailMatching,
   setMatchingDelay,
+  setBriefScenario,
+  setBriefDelay,
+  setReviewScenario,
+  triggerFailNextRelease,
+  setFailAiVerification,
+  resetReview,
   emitTestEvent,
   dropConnection,
   subscribeMockControls,
 } from '../mocks/controls';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/ui/button';
 
 export const DevDrawer: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -79,6 +85,13 @@ export const DevDrawer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
+  // Listen to open-dev-drawer custom event
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener('open-dev-drawer', handleOpen);
+    return () => window.removeEventListener('open-dev-drawer', handleOpen);
+  }, []);
+
   // Trap focus when open
   useEffect(() => {
     if (isOpen) {
@@ -116,20 +129,21 @@ export const DevDrawer: React.FC = () => {
   };
 
   if (!isOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        title="Open Developer Tools (Ctrl+Shift+D)"
-        aria-label="Open Developer Tools"
-        className="fixed bottom-4 left-4 z-40 p-2.5 rounded-full bg-surface-raised border border-border text-primary shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-primary"
-      >
-        <Terminal className="w-5 h-5" />
-      </button>
-    );
+    return null;
   }
 
-  const servicesList = ['project', 'talent', 'payment', 'workspace', 'admin', 'notification'];
+  const servicesList = [
+    'project',
+    'talent',
+    'payment',
+    'workspace',
+    'admin',
+    'notification',
+    'github',
+    'codeContext',
+    'verification',
+    'review',
+  ];
 
   return (
     <div
@@ -250,11 +264,10 @@ export const DevDrawer: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setServiceFailing(svc, !isFailing)}
-                        className={`px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer border ${
-                          isFailing
-                            ? 'bg-danger text-on-primary border-danger'
-                            : 'bg-surface text-text-muted border-border hover:text-text'
-                        }`}
+                        className={`px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer border ${isFailing
+                          ? 'bg-danger text-on-primary border-danger'
+                          : 'bg-surface text-text-muted border-border hover:text-text'
+                          }`}
                       >
                         {isFailing ? 'Failing with 503' : 'Healthy'}
                       </button>
@@ -270,11 +283,10 @@ export const DevDrawer: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFailMatching(!mockState.failMatching)}
-                    className={`px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer border ${
-                      mockState.failMatching
-                        ? 'bg-danger text-on-primary border-danger'
-                        : 'bg-surface text-text-muted border-border hover:text-text'
-                    }`}
+                    className={`px-2.5 py-1 text-xs rounded font-medium transition-colors cursor-pointer border ${mockState.failMatching
+                      ? 'bg-danger text-on-primary border-danger'
+                      : 'bg-surface text-text-muted border-border hover:text-text'
+                      }`}
                   >
                     {mockState.failMatching ? 'Failing (status: failed)' : 'Normal'}
                   </button>
@@ -292,6 +304,86 @@ export const DevDrawer: React.FC = () => {
                     onChange={(e) => setMatchingDelay(Number(e.target.value) || 0)}
                     className="w-24 px-2 py-1 text-xs rounded bg-surface border border-border text-right font-mono text-text"
                   />
+                </div>
+              </div>
+
+              {/* AI Brief Simulation */}
+              <div className="p-3 rounded-md bg-surface-raised/50 border border-border space-y-2.5 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">AI Brief Scenario</span>
+                  <select
+                    value={mockState.briefScenario}
+                    onChange={(e) => setBriefScenario(e.target.value as 'ok' | 'slow' | 'fail')}
+                    className="px-2 py-1 text-xs rounded bg-surface border border-border text-text font-mono"
+                  >
+                    <option value="ok">Normal (4.9s)</option>
+                    <option value="slow">Slow (40s)</option>
+                    <option value="fail">Fail (AI_TIMEOUT)</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="brief-delay-input" className="text-xs text-text-muted">
+                    AI Brief Delay (ms)
+                  </label>
+                  <input
+                    id="brief-delay-input"
+                    type="number"
+                    min="0"
+                    step="500"
+                    value={mockState.briefDelayMs}
+                    onChange={(e) => setBriefDelay(Number(e.target.value) || 0)}
+                    className="w-24 px-2 py-1 text-xs font-mono rounded bg-surface border border-border text-text text-right focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Review & Verification Simulation */}
+              <div className="p-3 rounded-md bg-surface-raised/50 border border-border space-y-2.5 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">Review Scenario</span>
+                  <select
+                    value={mockState.reviewScenario}
+                    onChange={(e) =>
+                      setReviewScenario(e.target.value as 'pass' | 'mixed' | 'fail')
+                    }
+                    className="px-2 py-1 text-xs rounded bg-surface border border-border text-text font-mono"
+                  >
+                    <option value="pass">Pass (All clean)</option>
+                    <option value="mixed">Mixed (Default: docs fail, AI flags)</option>
+                    <option value="fail">Fail (Test fail, secret risk)</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">Fail AI Verification</span>
+                  <button
+                    type="button"
+                    onClick={() => setFailAiVerification(!mockState.failAiVerification)}
+                    className={`px-2 py-0.5 text-xs rounded font-medium border cursor-pointer ${mockState.failAiVerification
+                      ? 'bg-danger text-on-primary border-danger'
+                      : 'bg-surface text-text-muted border-border hover:text-text'
+                      }`}
+                  >
+                    {mockState.failAiVerification ? 'Failing (503)' : 'Normal'}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/60">
+                  <button
+                    type="button"
+                    onClick={triggerFailNextRelease}
+                    className={`px-2 py-1 text-xs rounded border cursor-pointer font-medium ${mockState.failNextRelease
+                      ? 'bg-warning/20 text-warning border-warning'
+                      : 'bg-surface text-text-muted border-border hover:text-text'
+                      }`}
+                  >
+                    {mockState.failNextRelease ? 'Next Release Will Fail (503)' : 'Fail Next Release (503)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetReview}
+                    className="px-2 py-1 text-xs rounded border border-border bg-surface text-text-muted hover:text-text cursor-pointer"
+                  >
+                    Reset Review State
+                  </button>
                 </div>
               </div>
             </section>
@@ -328,6 +420,7 @@ export const DevDrawer: React.FC = () => {
                     <option value="payment.released">payment.released</option>
                     <option value="task.assigned">task.assigned</option>
                     <option value="service.degraded">service.degraded</option>
+                    <option value="submission.status_changed">submission.status_changed</option>
                   </select>
                   <Button
                     variant="primary"
@@ -391,11 +484,10 @@ export const DevDrawer: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-1.5 font-mono">
                           <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              isErr
-                                ? 'bg-danger/20 text-danger border border-danger/40'
-                                : 'bg-success/20 text-success border border-success/40'
-                            }`}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isErr
+                              ? 'bg-danger/20 text-danger border border-danger/40'
+                              : 'bg-success/20 text-success border border-success/40'
+                              }`}
                           >
                             {log.status}
                           </span>

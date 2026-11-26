@@ -5,10 +5,10 @@ import { AuthGuard, RoleGuard, FreelancerRedirect, FullScreenSkeleton } from './
 import { ErrorBoundary } from './ErrorBoundary';
 import { NotFound } from './NotFound';
 
-const OwnerDashboard = lazy(() => import('../features/dashboard/OwnerDashboard'));
+import OwnerDashboard from '../features/dashboard/OwnerDashboard';
 const PostProjectPage = lazy(() => import('../features/post-project/PostProjectPage'));
 const ProjectMatchesPage = lazy(() => import('../features/matching/ProjectMatchesPage'));
-const AnalyticsPage = lazy(() => import('../features/admin-analytics/AnalyticsPage'));
+const ReviewPage = lazy(() => import('../features/review/ReviewPage'));
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -48,19 +48,30 @@ export const AppRoutes: React.FC = () => {
                 </ErrorBoundary>
               }
             />
-            {/* Admin Analytics: protected by RoleGuard requiring admin */}
+            <Route
+              path="/owner/projects/:projectId/review"
+              element={
+                <ErrorBoundary fallbackTitle="Review Submission Error">
+                  <ReviewPage />
+                </ErrorBoundary>
+              }
+            />
+            {/* Admin Analytics: redirects to Admin Overview #analytics */}
             <Route
               path="/admin/analytics"
+              element={<Navigate to="/admin#analytics" replace />}
+            />
+            {/* Admin Overview */}
+            <Route
+              path="/admin"
               element={
                 <RoleGuard requiredRole="admin">
-                  <ErrorBoundary fallbackTitle="Admin Analytics Error">
-                    <AnalyticsPage />
+                  <ErrorBoundary fallbackTitle="Admin Overview Error">
+                    <OwnerDashboard />
                   </ErrorBoundary>
                 </RoleGuard>
               }
             />
-            {/* Legacy admin route redirects to owner */}
-            <Route path="/admin" element={<Navigate to="/owner" replace />} />
             {/* Freelancer route redirects to Freelancer Workspace on port 5177 */}
             <Route path="/freelancer" element={<FreelancerRedirect />} />
             <Route

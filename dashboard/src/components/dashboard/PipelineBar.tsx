@@ -31,12 +31,11 @@ export const PipelineBar: React.FC<PipelineBarProps> = ({
 
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
-      {/* Visual Bar */}
-      <div className="w-full h-4 rounded-full bg-surface-raised border border-border overflow-hidden flex">
+      <div className="w-full h-3.5 rounded-full bg-secondary border border-border overflow-hidden flex">
         {pAuthorized > 0 && (
           <div
             style={{ width: `${pAuthorized}%` }}
-            className="bg-border/80 transition-all duration-300"
+            className="bg-muted-foreground/40 transition-all duration-300"
             title={`Authorized: ${formatMoney(authorized)} (${pAuthorized.toFixed(1)}%)`}
           />
         )}
@@ -63,32 +62,31 @@ export const PipelineBar: React.FC<PipelineBarProps> = ({
         )}
       </div>
 
-      {/* Legend & Breakdown */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-        <div className="flex flex-col gap-1.5 p-2 rounded-md bg-surface-raised/40 border border-border">
+        <div className="flex flex-col gap-2 p-3 rounded-xl bg-secondary/45 border border-border">
           <StatusChip category="payment" status="authorized" size="sm" />
-          <span className="text-sm font-semibold text-text">
+          <span className="text-sm font-semibold text-foreground font-mono tabular-nums">
             {formatMoney(authorized)}
           </span>
         </div>
 
-        <div className="flex flex-col gap-1.5 p-2 rounded-md bg-surface-raised/40 border border-border">
+        <div className="flex flex-col gap-2 p-3 rounded-xl bg-secondary/45 border border-border">
           <StatusChip category="payment" status="held" size="sm" />
-          <span className="text-sm font-semibold text-money">
+          <span className="text-sm font-semibold text-money font-mono tabular-nums">
             {formatMoney(held)}
           </span>
         </div>
 
-        <div className="flex flex-col gap-1.5 p-2 rounded-md bg-surface-raised/40 border border-border">
+        <div className="flex flex-col gap-2 p-3 rounded-xl bg-secondary/45 border border-border">
           <StatusChip category="payment" status="release_pending" size="sm" />
-          <span className="text-sm font-semibold text-money">
+          <span className="text-sm font-semibold text-money font-mono tabular-nums">
             {formatMoney(pendingRelease)}
           </span>
         </div>
 
-        <div className="flex flex-col gap-1.5 p-2 rounded-md bg-surface-raised/40 border border-border">
+        <div className="flex flex-col gap-2 p-3 rounded-xl bg-secondary/45 border border-border">
           <StatusChip category="payment" status="released" size="sm" />
-          <span className="text-sm font-semibold text-success">
+          <span className="text-sm font-semibold text-success font-mono tabular-nums">
             {formatMoney(released)}
           </span>
         </div>
@@ -96,4 +94,3 @@ export const PipelineBar: React.FC<PipelineBarProps> = ({
     </div>
   );
 };
-

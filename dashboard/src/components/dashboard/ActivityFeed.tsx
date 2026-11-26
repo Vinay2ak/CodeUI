@@ -17,26 +17,28 @@ import { CbEvent } from '../../realtime/types';
 function getEventIcon(type: string) {
   switch (type) {
     case 'user.registered':
-      return <UserPlus className="w-4 h-4 text-primary" />;
+      return <UserPlus className="w-4 h-4 text-accent" />;
     case 'project.status_changed':
-      return <RefreshCw className="w-4 h-4 text-primary" />;
+      return <RefreshCw className="w-4 h-4 text-accent" />;
     case 'payment.held':
-      // Amber/money tone for escrow
       return <Lock className="w-4 h-4 text-money" />;
     case 'payment.released':
       return <BadgeCheck className="w-4 h-4 text-money" />;
     case 'task.assigned':
-      return <FileCode className="w-4 h-4 text-primary" />;
+      return <FileCode className="w-4 h-4 text-accent" />;
     case 'service.degraded':
       return <AlertTriangle className="w-4 h-4 text-warning" />;
     default:
-      return <Bell className="w-4 h-4 text-text-muted" />;
+      return <Bell className="w-4 h-4 text-muted-foreground" />;
   }
 }
 
-export const ActivityFeed: React.FC = () => {
+export interface ActivityFeedProps {
+  onEventClick?: (event: CbEvent) => void;
+}
+
+export const ActivityFeed: React.FC<ActivityFeedProps> = ({ onEventClick }) => {
   const { events } = useEventStore();
-  // Relative time refreshed every 30 s
   const [, setTick] = useState(0);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export const ActivityFeed: React.FC = () => {
 
   if (events.length === 0) {
     return (
-      <div className="py-12 flex flex-col items-center justify-center text-center text-text-muted gap-2">
+      <div className="py-12 flex flex-col items-center justify-center text-center text-muted-foreground gap-2">
         <Inbox className="w-8 h-8 opacity-40" />
         <p className="text-sm font-medium">Waiting for events…</p>
       </div>
@@ -57,26 +59,31 @@ export const ActivityFeed: React.FC = () => {
 
   return (
     <div className="flow-root">
-      <ul role="list" className="divide-y divide-border">
+      <ul role="list" className="divide-y divide-border/70">
         {events.map((event: CbEvent) => {
           return (
             <li
               key={event.id}
-              className="py-3 px-2 sm:px-4 flex items-start gap-3.5 hover:bg-surface-raised/40 transition-colors rounded-md"
+              onClick={onEventClick ? () => onEventClick(event) : undefined}
+              className={`py-3.5 px-3 sm:px-4 flex items-start gap-3.5 hover:bg-secondary/45 transition-colors rounded-xl ${
+                onEventClick ? 'cursor-pointer' : ''
+              }`}
             >
-              <div className="mt-0.5 p-1.5 rounded-full bg-surface-raised border border-border flex items-center justify-center flex-shrink-0">
+              <div className="mt-0.5 p-2 rounded-full bg-secondary border border-border flex items-center justify-center flex-shrink-0">
                 {getEventIcon(event.type)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-text leading-snug">
+                <p className="text-sm font-medium text-foreground leading-snug">
                   {formatEventSentence(event)}
                 </p>
-                <div className="mt-1 flex items-center gap-2 text-xs text-text-muted">
-                  <span className="font-mono text-[11px] bg-surface-raised px-1.5 py-0.5 rounded border border-border">
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="font-mono text-[11px] bg-secondary px-2 py-0.5 rounded-full border border-border">
                     {event.source}
                   </span>
                   <span>•</span>
-                  <span>{formatRelativeTime(event.occurredAt)}</span>
+                  <span className="font-mono tabular-nums">
+                    {formatRelativeTime(event.occurredAt)}
+                  </span>
                 </div>
               </div>
             </li>
@@ -86,4 +93,3 @@ export const ActivityFeed: React.FC = () => {
     </div>
   );
 };
-

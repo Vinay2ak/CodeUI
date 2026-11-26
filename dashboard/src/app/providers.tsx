@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider } from '../components/ui/Toast';
+import { Toaster } from '../components/ui/sonner';
 import { ErrorBoundary } from './ErrorBoundary';
 
 interface ProvidersProps {
@@ -15,13 +16,7 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
         defaultOptions: {
           queries: {
             staleTime: 60_000,
-            retry: (failureCount, error: any) => {
-              const status = error?.status || error?.statusCode;
-              if (status === 401 || status === 403 || status === 404) {
-                return false;
-              }
-              return failureCount < 1;
-            },
+            retry: false,
             refetchOnWindowFocus: false,
           },
         },
@@ -41,9 +36,9 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
           >
             {children}
           </BrowserRouter>
+          <Toaster position="bottom-right" />
         </ToastProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
 };
-

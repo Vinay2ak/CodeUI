@@ -29,14 +29,17 @@ export function adaptProject(raw: any): Project {
     };
   }
 
+  const embeddedRepoMatch = String(raw.expected_result || raw.expectedResult || '').match(
+    /(?:^|\n)Repository:\s*(https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?)/i
+  );
+  const embeddedRepoUrl = embeddedRepoMatch ? embeddedRepoMatch[1].replace(/\.git$/, '').replace(/\/$/, '') : null;
+
   let repo = raw.repo;
-  if (!repo) {
-    if (raw.repo_url || raw.repoUrl) {
-      const url = raw.repo_url || raw.repoUrl;
-      repo = url.replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
-    } else {
-      repo = 'Not linked yet';
-    }
+  const rawRepoUrl = raw.repo_url || raw.repoUrl || embeddedRepoUrl;
+  if (rawRepoUrl) {
+    repo = rawRepoUrl.replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
+  } else if (!repo) {
+    repo = 'Not linked yet';
   }
 
   const budget = typeof raw.budget === 'number' ? raw.budget : Number(raw.budget) || 0;
@@ -86,7 +89,7 @@ export function adaptProjectDetail(raw: any): ProjectDetail {
     skills,
     urgency: raw?.urgency || 'ASAP',
     size,
-    repoUrl: raw?.repo_url ?? raw?.repoUrl ?? null,
+    repoUrl: raw?.repo_url ?? raw?.repoUrl ?? (base.repo && !base.repo.startsWith('codebridge/') && base.repo !== 'Not linked yet' ? `https://github.com/${base.repo}` : null),
     verificationMode:
       raw?.verification_mode || raw?.verificationMode || 'AUTO_TESTS_AND_REVIEW',
     createdAt: raw?.created_at || raw?.createdAt || base.updatedAt,
@@ -134,5 +137,35 @@ export function adaptCreateProjectRequest(payload: CreateProjectPayload): any {
     deadline,
     required_skills: skills,
     expected_result: payload.expectedResult || payload.description,
+    status: payload.status || 'open',
+    blockerType: payload.blockerType || 'HARD_BUG',
+    blocker_type: payload.blockerType || 'HARD_BUG',
+    stacks: payload.stacks || skills,
+    specialties: payload.specialties || [],
+    skills: payload.skills || skills,
+    urgency: payload.urgency || 'THIS_WEEK',
+    repoUrl: payload.repoUrl,
+    repo_url: payload.repoUrl,
+    verificationMode: payload.verificationMode || 'AUTO_TESTS_AND_REVIEW',
+    verification_mode: payload.verificationMode || 'AUTO_TESTS_AND_REVIEW',
   };
+}
+
+export function adaptUpdateProjectRequest(payload: Partial<CreateProjectPayload>): any {
+  const result: Record<string, any> = {};
+  if (payload.title !== undefined) result.title = payload.title;
+  if (payload.description !== undefined) result.description = payload.description;
+  if (payload.budget !== undefined) result.budget = payload.budget;
+  if (payload.blockerType !== undefined) result.blocker_type = payload.blockerType;
+  if (payload.stacks !== undefined) {
+    result.stacks = payload.stacks;
+    result.required_skills = payload.stacks;
+  }
+  if (payload.specialties !== undefined) result.specialties = payload.specialties;
+  if (payload.skills !== undefined) result.skills = payload.skills;
+  if (payload.urgency !== undefined) result.urgency = payload.urgency;
+  if (payload.repoUrl !== undefined) result.repo_url = payload.repoUrl;
+  if (payload.verificationMode !== undefined) result.verification_mode = payload.verificationMode;
+  if (payload.status !== undefined) result.status = payload.status;
+  return result;
 }
