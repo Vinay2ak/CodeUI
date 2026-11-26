@@ -157,6 +157,9 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
   const isConfigured = parsed.ok;
   const isControlsDisabled = !isConfigured || mixedBlocked;
 
+  // In production, hide the section entirely unless a reachable HTTPS Grafana URL is configured.
+  if (!import.meta.env.DEV && (!parsed.ok || mixedBlocked)) return null;
+
   return (
     <section id="analytics" aria-labelledby="analytics-heading" className="flex flex-col gap-4">
       {/* Section Header */}
