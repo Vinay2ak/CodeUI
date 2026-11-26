@@ -30,7 +30,7 @@ export const WorkspaceCenter: React.FC<WorkspaceCenterProps> = ({
   const isWorkspaceRunning = workspaceStatus === "running";
 
   const terminalInputRef = useRef<HTMLInputElement>(null);
-  const [activeDockTab, setActiveDockTab] = useState<"terminal" | "tests">("terminal");
+  const [activeDockTab, setActiveDockTab] = useState<"terminal" | "tests" | "ask">("terminal");
   const [liveRun, setLiveRun] = useState<Run | null>(null);
   const [runCompletedAt, setRunCompletedAt] = useState<number | null>(null);
 
@@ -185,6 +185,8 @@ export const WorkspaceCenter: React.FC<WorkspaceCenterProps> = ({
             terminalInputRef={terminalInputRef}
             activeDockTab={activeDockTab}
             onTabChange={setActiveDockTab}
+            lastSavedAt={fileHook.lastSavedAt}
+            activeEditorFile={fileHook.activePath}
           />
         </ErrorBoundary>
       </div>

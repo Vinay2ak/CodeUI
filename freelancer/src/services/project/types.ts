@@ -26,8 +26,11 @@ export type DockerWorkspaceState =
 export interface GitHubHandoffStatus {
   status: "connected" | "pending" | "disconnected";
   repoName: string;
+  repoUrl?: string;
   defaultBranch: string;
   commitHash: string;
+  isPrivate?: boolean;
+  description?: string;
   accessLevel: "Controlled Read-Only (No Owner Password Shared)";
 }
 

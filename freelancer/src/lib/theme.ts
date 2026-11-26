@@ -4,13 +4,13 @@ const THEME_STORAGE_KEY = "cb-theme";
 
 export function getInitialTheme(): Theme {
   if (typeof window === "undefined") {
-    return "dark";
+    return "light";
   }
   const saved = localStorage.getItem(THEME_STORAGE_KEY);
   if (saved === "light" || saved === "dark") {
     return saved;
   }
-  return "dark";
+  return "light";
 }
 
 export function updateMetaThemeColor(): void {
@@ -35,10 +35,12 @@ export function applyTheme(theme: Theme): void {
     return;
   }
   const root = document.documentElement;
-  if (theme === "light") {
-    root.setAttribute("data-theme", "light");
+  if (theme === "dark") {
+    root.classList.add("dark");
+    root.setAttribute("data-theme", "dark");
   } else {
-    root.removeAttribute("data-theme");
+    root.classList.remove("dark");
+    root.setAttribute("data-theme", "light");
   }
   localStorage.setItem(THEME_STORAGE_KEY, theme);
   updateMetaThemeColor();
@@ -49,4 +51,3 @@ export function toggleTheme(currentTheme: Theme): Theme {
   applyTheme(nextTheme);
   return nextTheme;
 }
-

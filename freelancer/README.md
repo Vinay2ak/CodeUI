@@ -116,6 +116,25 @@ In local development with `VITE_USE_MOCKS=true`, the developer console exposes `
 | `window.__cbMock.simulateOwnerDecision("t1", "approve")` | Dispatches owner acceptance and payment release events. |
 | `window.__cbMock.simulateOwnerDecision("t1", "changes")` | Dispatches reviewer changes requested event and makes the test run stale. |
 | `window.__cbMock.resetTask("t1")` | Restores files, run state, and task status to initial snapshot. |
+| `window.__cbMock.setAiScenario(scenario)` | Sets simulated AI scenario: `"ok"`, `"slow"`, `"fail"`, `"not_configured"`, `"no_evidence"`, `"rate_limited"`, `"hostile"`. |
+| `window.__cbMock.resetAi()` | Resets AI question counts, quota, idempotency cache, and returns scenario to `"ok"`. |
+
+---
+
+## AI Assistant Feature Flags & Privacy
+
+### Feature Flags
+Configured via environment variables:
+- `VITE_FEATURE_AI`: `"true"` = on, `"false"` = off, unset = defaults to on when `VITE_USE_MOCKS="true"`, otherwise off.
+- `VITE_AI_FEATURES`: Optional comma-separated list of enabled AI features: `context`, `ask`, `explain`, `selfcheck`, `draft` (case-insensitive; empty or unset = all features enabled).
+When a feature is disabled, its UI elements are not rendered at all and the workspace behaves as before.
+
+### Privacy & Advisory Principles
+1. **Advisory Only**: AI provides code guidance and answers queries. It never executes shell commands, edits files, submits solutions, or bypasses test gates.
+2. **References Only**: The browser only ever transmits references: `taskId`, the user's question (3-500 chars), and optional relative `focusPath`. Never file contents, diffs, terminal logs, or tokens.
+3. **Untrusted Plain Text**: All output from AI services is validated, size-clamped, control-character stripped, secret-redacted, and rendered strictly as plain text (no HTML, no dangerouslySetInnerHTML, and no markdown interpreters).
+4. **Grounded Citations**: An answer must cite repository code ranges. Citations only link to files confirmed to exist in the current workspace snapshot. Answers without supporting code are visibly flagged "Not grounded in code".
+
 
 ---
 
@@ -138,3 +157,28 @@ docker run -d --name codebridge-freelancer -p 8085:80 codebridge-freelancer:late
 
 ## Architectural Contracts
 See [docs/CROSS_APP_CONTRACT.md](file:///d:/CodeFreelancer/freelancer/docs/CROSS_APP_CONTRACT.md) for full cross-app navigation rules, cookie formats, session lifecycles, and realtime WebSocket event envelopes.
+
+
+---
+
+## AI Assistant (Part B)
+
+The AI assistant provides advisory code intelligence for freelancers:
+1. **Explain Failure** (Tests tab in Dock): On failed, timed-out, or error test rows, provides likely cause analysis, line-accurate suspected workspace locations with "Open" shortcuts, and next steps. Cached per `(runId, testId)` and invalidated when a new run begins or files are modified.
+2. **AI Self-Check** (Submission panel): "Before you submit" card evaluates saved workspace changes against acceptance criteria (Met / Partially met / Not met / Unknown), highlights evidence citations with workspace verification, details security/error-handling risks (bare except, print statements, secrets detection), and shows staleness alerts.
+3. **Draft Summary** (Submission panel): Inspects workspace modifications to generate concise reviewer notes and files-modified listings with Insert, Replace, and Append options adhering to the 500-character limit.
+
+### Security & Privacy Principles
+- **Advisory Only**: AI suggestions never alter or influence the deterministic submission gate.
+- **Privacy First**: The browser transmits only task references and IDs, never code contents or logs.
+- **Untrusted Plain Text**: All output is validated through strict Zod schemas, stripped of control characters, masked for secrets, and rendered strictly as plain text without Markdown or HTML parsers.
+- **Unsaved File Protection**: Self-check and draft summary require all workspace changes to be saved first.
+
+### Environment Flags
+- `VITE_FEATURE_AI`: Master toggle (`true` \| `false`).
+- `VITE_AI_FEATURES`: Comma-separated feature list (`context,ask,explain,selfcheck,draft`).
+
+### Diagnostic Controls (`window.__cbMock`)
+- `window.__cbMock.setAiScenario(scenario)`: `ok`, `slow`, `fail`, `not_configured`, `no_evidence`, `rate_limited`, `hostile`.
+- `window.__cbMock.failNextAiJob()`: Simulates an immediate failure on the next async job.
+- `window.__cbMock.resetAi()`: Resets AI state, quotas, and clears active job states.

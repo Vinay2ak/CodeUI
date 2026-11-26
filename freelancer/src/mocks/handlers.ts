@@ -2,6 +2,11 @@ import { http, HttpResponse, delay, HttpHandler } from "msw";
 import { env } from "../lib/env";
 import { MOCK_TASKS, MOCK_TASK_SUMMARIES, MOCK_ESCROWS } from "./data/tasks";
 import { MOCK_AI_CONTEXTS } from "./data/ai";
+import { answerQuestion } from "./data/aiAsk";
+import { TEST_RULES } from "./data/rules";
+import { buildSelfCheck } from "./data/selfCheck";
+import { buildDraft } from "./data/draft";
+import { T1_INITIAL_REPO } from "./data/repo";
 import {
   getWorkspace,
   startMockWorkspace,
@@ -14,6 +19,7 @@ import {
   getMockRun,
   submitMockSolution,
   getSubmissionState,
+  getMockFileMap,
 } from "./simulator";
 
 // Down status flags for services
@@ -33,6 +39,50 @@ export const serviceDownState: Record<
 
 export let isSuspendedMock = false;
 export let forceExpireToken = false;
+
+export type AiScenario =
+  | "ok"
+  | "slow"
+  | "fail"
+  | "not_configured"
+  | "no_evidence"
+  | "rate_limited"
+  | "hostile";
+
+export let aiScenarioState: AiScenario = "ok";
+export let aiSessionQuota = 20;
+export let aiQuestionCount = 0;
+export const aiSeenIdempotencyKeys = new Map<string, any>();
+export let failNextAiJobFlag = false;
+
+export function failNextAiJob(fail = true) {
+  failNextAiJobFlag = fail;
+}
+
+export interface MockAiJobRecord {
+  jobId: string;
+  taskId: string;
+  kind: "self_check" | "draft_summary";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  createdAt: number;
+  error: { code: string; message: string } | null;
+  result: any | null;
+}
+
+export const mockAiJobs = new Map<string, MockAiJobRecord>();
+
+export function setAiScenario(scenario: AiScenario) {
+  aiScenarioState = scenario;
+}
+
+export function resetAiState() {
+  aiScenarioState = "ok";
+  aiSessionQuota = 20;
+  aiQuestionCount = 0;
+  aiSeenIdempotencyKeys.clear();
+  failNextAiJobFlag = false;
+  mockAiJobs.clear();
+}
 
 export function setMockSuspended(suspended: boolean) {
   isSuspendedMock = suspended;
@@ -82,6 +132,7 @@ function verifyAuth(request: Request): {
   status: number;
   code: string;
   detail: string;
+  user?: { sub: string; role: string };
 } {
   const auth = request.headers.get("Authorization");
   if (!auth || !auth.startsWith("Bearer ")) {
@@ -126,7 +177,13 @@ function verifyAuth(request: Request): {
       };
     }
 
-    return { valid: true, status: 200, code: "", detail: "" };
+    return {
+      valid: true,
+      status: 200,
+      code: "",
+      detail: "",
+      user: { sub: payload.sub, role: payload.role },
+    };
   } catch {
     return {
       valid: false,
@@ -593,13 +650,55 @@ export const submissionHandlers: HttpHandler[] = [
 
 // ==================== AI HANDLERS ====================
 export const aiHandlers: HttpHandler[] = [
+  http.get("*/api/v1/ai/capabilities", async ({ request }) => {
+    void request;
+    const corrId = generateUuid();
+    if (serviceDownState.ai || aiScenarioState === "fail") {
+      return HttpResponse.json(
+        { code: "AI_UNAVAILABLE", detail: "AI assistant service unavailable", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (aiScenarioState === "not_configured") {
+      return HttpResponse.json(
+        {
+          provider: "none",
+          features: { context: false, ask: false, explain: false, selfCheck: false, draft: false },
+          limits: { askPerHour: null },
+        },
+        { headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    return HttpResponse.json(
+      {
+        provider: "mock",
+        features: { context: true, ask: true, explain: true, selfCheck: true, draft: true },
+        limits: { askPerHour: 20 },
+      },
+      { headers: { "X-Correlation-Id": corrId } }
+    );
+  }),
+
   http.get("*/api/v1/ai/context/:taskId", async ({ params, request }) => {
-    await delay(Math.floor(Math.random() * 400) + 300);
+    if (aiScenarioState === "slow") {
+      await delay(25000);
+    } else {
+      await delay(Math.floor(Math.random() * 400) + 300);
+    }
     const corrId = generateUuid();
 
-    if (serviceDownState.ai) {
+    if (serviceDownState.ai || aiScenarioState === "fail") {
       return HttpResponse.json(
-        { code: "SERVICE_UNAVAILABLE", detail: "AI context service unavailable", correlationId: corrId },
+        { code: "AI_UNAVAILABLE", detail: "AI context service unavailable", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (aiScenarioState === "not_configured") {
+      return HttpResponse.json(
+        { code: "AI_NOT_CONFIGURED", detail: "The AI assistant isn't enabled on this server.", correlationId: corrId },
         { status: 503, headers: { "X-Correlation-Id": corrId } }
       );
     }
@@ -612,7 +711,42 @@ export const aiHandlers: HttpHandler[] = [
       );
     }
 
-    const ctx = MOCK_AI_CONTEXTS[params.taskId as string];
+    if (authCheck.user?.role !== "freelancer") {
+      return HttpResponse.json(
+        { code: "FORBIDDEN", detail: "Access denied: role freelancer required", correlationId: corrId },
+        { status: 403, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (aiScenarioState === "hostile") {
+      return HttpResponse.json(
+        {
+          generated_at: "2026-11-22T10:00:00Z",
+          repo_commit_sha: "a1b2c3d\u001b[31m",
+          summary:
+            "<script>alert(1)</script> [click](javascript:alert(1)) \u001b[32mHostile summary with Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123def456ghi789 and sk-test-1234567890abcdefghijkl",
+          findings: ["<script>alert(1)</script> Finding with secret password=supersecretpassword123"],
+          relevant_files: [
+            { path: "../../etc/passwd", score: 0.99, reason: "Hostile path traversal" },
+            { path: "app/nonexistent_file_xyz.py", score: 0.95, reason: "File not in workspace" },
+            { path: "app/webhooks.py", score: 0.85, reason: "Real file with [click](javascript:alert(1))" },
+          ],
+          dependencies: [
+            { name: "fake-lib", kind: "other", note: "token: sensitive_auth_token_value_xyz" },
+          ],
+          affected_areas: [
+            { name: "Hostile area", note: "\u001b[31mANSI escape in note" },
+          ],
+          setup_hints: [
+            { command: "rm -rf /", note: "Dangerous hint" },
+          ],
+          approach: ["Step 1 with <script>alert(1)</script>"],
+        },
+        { headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const ctx = MOCK_AI_CONTEXTS[params.taskId as string] || (params.taskId === "task-1" ? MOCK_AI_CONTEXTS.t1 : null);
     if (!ctx) {
       return HttpResponse.json(
         { code: "NOT_FOUND", detail: "Context not found", correlationId: corrId },
@@ -621,6 +755,563 @@ export const aiHandlers: HttpHandler[] = [
     }
 
     return HttpResponse.json(ctx, { headers: { "X-Correlation-Id": corrId } });
+  }),
+
+  http.post("*/api/v1/ai/tasks/:taskId/ask", async ({ params, request }) => {
+    if (aiScenarioState === "slow") {
+      await delay(25000);
+    } else {
+      await delay(Math.floor(Math.random() * 800) + 800);
+    }
+    const corrId = generateUuid();
+
+    if (serviceDownState.ai || aiScenarioState === "fail") {
+      return HttpResponse.json(
+        { code: "AI_UNAVAILABLE", detail: "The AI assistant is unavailable right now. The workspace and tests are not affected.", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (aiScenarioState === "not_configured") {
+      return HttpResponse.json(
+        { code: "AI_NOT_CONFIGURED", detail: "The AI assistant isn't enabled on this server.", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const authCheck = verifyAuth(request);
+    if (!authCheck.valid) {
+      return HttpResponse.json(
+        { code: authCheck.code, detail: authCheck.detail, correlationId: corrId },
+        { status: authCheck.status, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (authCheck.user?.role !== "freelancer") {
+      return HttpResponse.json(
+        { code: "FORBIDDEN", detail: "Access denied: role freelancer required", correlationId: corrId },
+        { status: 403, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key") ||
+      request.headers.get("idempotency-key");
+
+    if (idempotencyKey && aiSeenIdempotencyKeys.has(idempotencyKey)) {
+      return HttpResponse.json(aiSeenIdempotencyKeys.get(idempotencyKey), {
+        headers: { "X-Correlation-Id": corrId },
+      });
+    }
+
+    let body: any = null;
+    try {
+      body = await request.json();
+    } catch {
+      return HttpResponse.json(
+        { code: "VALIDATION_FAILED", detail: "Invalid JSON body", correlationId: corrId },
+        { status: 422, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const question = typeof body?.question === "string" ? body.question.trim() : "";
+    if (question.length < 3 || question.length > 500) {
+      return HttpResponse.json(
+        {
+          code: "VALIDATION_FAILED",
+          detail: "Question must be between 3 and 500 characters",
+          correlationId: corrId,
+        },
+        { status: 422, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    aiQuestionCount++;
+
+    if (aiScenarioState === "rate_limited" && aiQuestionCount >= 3) {
+      return HttpResponse.json(
+        {
+          code: "RATE_LIMITED",
+          detail: "You've reached the question limit. Try again in 20s.",
+          correlationId: corrId,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-Correlation-Id": corrId,
+            "Retry-After": "20",
+          },
+        }
+      );
+    }
+
+    aiSessionQuota = Math.max(0, aiSessionQuota - 1);
+
+    if (aiScenarioState === "hostile") {
+      const hostileCitations = [
+        { path: "../../etc/passwd", start_line: 1, end_line: 10, snippet: "root:x:0:0" },
+        { path: "app/unknown_never_exists.py", start_line: 1, end_line: 5, snippet: "fake" },
+        ...Array.from({ length: 30 }, (_, i) => ({
+          path: `app/fake_${i}.py`,
+          start_line: 1,
+          end_line: 2,
+          snippet: `Snippet ${i}`,
+        })),
+      ];
+
+      const hostileResponse = {
+        answer_id: `ans_hostile_${Date.now()}`,
+        generated_at: "2026-11-22T10:00:00Z",
+        repo_commit_sha: "a1b2c3d\u001b[31m",
+        grounding: "grounded",
+        answer:
+          "A".repeat(6000) +
+          "\n<script>alert(1)</script>\n[click](javascript:alert(1))\nAuthorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123def456ghi789\nsk-test-1234567890abcdefghijkl\n\u001b[31mRed text\u001b[0m",
+        citations: hostileCitations,
+        remaining: aiSessionQuota,
+      };
+
+      if (idempotencyKey) {
+        aiSeenIdempotencyKeys.set(idempotencyKey, hostileResponse);
+      }
+      return HttpResponse.json(hostileResponse, {
+        headers: { "X-Correlation-Id": corrId },
+      });
+    }
+
+    if (aiScenarioState === "no_evidence") {
+      const defaultResp = {
+        answer_id: `ans_def_${Date.now()}`,
+        generated_at: new Date().toISOString(),
+        repo_commit_sha: "a1b2c3d",
+        grounding: "no_evidence",
+        answer:
+          "I couldn't find code in this repository that answers that. Try naming a file or a function.",
+        citations: [],
+        remaining: aiSessionQuota,
+      };
+      if (idempotencyKey) {
+        aiSeenIdempotencyKeys.set(idempotencyKey, defaultResp);
+      }
+      return HttpResponse.json(defaultResp, {
+        headers: { "X-Correlation-Id": corrId },
+      });
+    }
+
+    const answer = answerQuestion(
+      params.taskId as string,
+      question,
+      aiSessionQuota
+    );
+
+    if (idempotencyKey) {
+      aiSeenIdempotencyKeys.set(idempotencyKey, answer);
+    }
+
+    return HttpResponse.json(answer, {
+      headers: { "X-Correlation-Id": corrId },
+    });
+  }),
+
+  // POST /ai/tasks/:taskId/explain-failure
+  http.post("*/api/v1/ai/tasks/:taskId/explain-failure", async ({ params, request }) => {
+    if (aiScenarioState === "slow") {
+      await delay(25000);
+    } else {
+      await delay(Math.floor(Math.random() * 400) + 300);
+    }
+    const corrId = generateUuid();
+
+    if (serviceDownState.ai || aiScenarioState === "fail") {
+      return HttpResponse.json(
+        {
+          code: "AI_UNAVAILABLE",
+          detail: "The AI assistant is unavailable right now. Your tests and submission are not affected.",
+          correlationId: corrId,
+        },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (aiScenarioState === "not_configured") {
+      return HttpResponse.json(
+        {
+          code: "AI_NOT_CONFIGURED",
+          detail: "The AI assistant isn't enabled on this server.",
+          correlationId: corrId,
+        },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (aiScenarioState === "rate_limited") {
+      return HttpResponse.json(
+        {
+          code: "RATE_LIMITED",
+          detail: "Rate limit exceeded. Please wait 20s.",
+          correlationId: corrId,
+        },
+        { status: 429, headers: { "X-Correlation-Id": corrId, "Retry-After": "20" } }
+      );
+    }
+
+    const authCheck = verifyAuth(request);
+    if (!authCheck.valid) {
+      return HttpResponse.json(
+        { code: authCheck.code, detail: authCheck.detail, correlationId: corrId },
+        { status: authCheck.status, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (authCheck.user?.role !== "freelancer") {
+      return HttpResponse.json(
+        { code: "FORBIDDEN", detail: "Access denied: role freelancer required", correlationId: corrId },
+        { status: 403, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key") ||
+      request.headers.get("idempotency-key");
+
+    if (idempotencyKey && aiSeenIdempotencyKeys.has(idempotencyKey)) {
+      return HttpResponse.json(aiSeenIdempotencyKeys.get(idempotencyKey), {
+        headers: { "X-Correlation-Id": corrId },
+      });
+    }
+
+    let body: any = null;
+    try {
+      body = await request.json();
+    } catch {
+      return HttpResponse.json(
+        { code: "VALIDATION_FAILED", detail: "Invalid JSON body", correlationId: corrId },
+        { status: 422, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const { testId } = body || {};
+    if (!testId || typeof testId !== "string") {
+      return HttpResponse.json(
+        { code: "VALIDATION_FAILED", detail: "testId is required", correlationId: corrId },
+        { status: 422, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const rule = TEST_RULES.find((r) => r.testId === testId);
+    if (!rule) {
+      return HttpResponse.json(
+        { code: "NOT_FOUND", detail: `Test ${testId} not found`, correlationId: corrId },
+        { status: 404, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (aiScenarioState === "hostile") {
+      const hostileResp = {
+        explanation_id: `exp_hostile_${Date.now()}`,
+        generated_at: "2026-11-22T10:00:00Z",
+        explanation:
+          "<script>alert(1)</script> Hostile explanation [click](javascript:alert(1)) with Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123def456ghi789",
+        likely_cause: "Hostile likely cause with sk-test-1234567890abcdefghijkl",
+        suspected_locations: [
+          { path: "../../etc/passwd", start_line: 1, end_line: 5, reason: "Hostile traversal" },
+          { path: "app/unknown_never_exists.py", start_line: 1, end_line: 2, reason: "Missing file" },
+          { path: "app/webhooks.py", start_line: 74, end_line: 74, reason: "Real file with <script>" },
+        ],
+        next_steps: [
+          "Step 1 with <script>alert(1)</script>",
+          "Step 2: fix the issue",
+        ],
+      };
+      if (idempotencyKey) aiSeenIdempotencyKeys.set(idempotencyKey, hostileResp);
+      return HttpResponse.json(hostileResp, { headers: { "X-Correlation-Id": corrId } });
+    }
+
+    const taskId = (params.taskId as string) || "t1";
+    const fileMap = getMockFileMap(taskId);
+    const snapshot = fileMap[rule.file];
+    const content = snapshot?.content || "";
+
+    let startLine: number | null = null;
+    if (content) {
+      const lines = content.split("\n");
+      if (testId === "test_webhook_idempotent_duplicate_event") {
+        const idx = lines.findIndex((l) => l.includes("handle_webhook") || l.includes("processed_event_ids"));
+        startLine = idx !== -1 ? idx + 1 : 74;
+      } else if (testId === "test_invalid_signature_not_retried") {
+        const idx = lines.findIndex((l) => l.includes("raise HTTPException") || l.includes("status_code="));
+        startLine = idx !== -1 ? idx + 1 : 77;
+      } else if (testId === "test_retry_backoff_schedule") {
+        const idx = lines.findIndex((l) => l.includes("calculate_retry_delay"));
+        startLine = idx !== -1 ? idx + 1 : 99;
+      } else if (testId === "test_retry_stops_after_max_attempts") {
+        const idx = lines.findIndex((l) => l.includes("should_retry") || l.includes("MAX_ATTEMPTS"));
+        startLine = idx !== -1 ? idx + 1 : 103;
+      } else {
+        const idx = lines.findIndex((l) => l.includes(rule.needle));
+        startLine = idx !== -1 ? idx + 1 : 1;
+      }
+    }
+
+    let likelyCause = "The assertion failed because the implementation does not satisfy the required behavior.";
+    let nextSteps: string[] = ["Review the failing assertion and line number.", "Implement the missing logic."];
+
+    if (testId === "test_webhook_idempotent_duplicate_event") {
+      likelyCause =
+        "The incoming webhook handler processes duplicate event IDs without an idempotency check, creating duplicate transactions.";
+      nextSteps = [
+        "Add an in-memory set or store to record processed event IDs.",
+        "Check if event_id is already in processed_event_ids before charging.",
+        "Return an already_processed status when a duplicate event arrives.",
+      ];
+    } else if (testId === "test_invalid_signature_not_retried") {
+      likelyCause =
+        "An invalid HMAC signature raises HTTP 500 instead of HTTP 400, causing upstream payment gateways to retry indefinitely.";
+      nextSteps = [
+        "Update HTTPException status_code from 500 to 400 Bad Request.",
+        "Include a clear detail message such as 'Invalid HMAC signature'.",
+        "Run the test suite to verify the status code assertion.",
+      ];
+    } else if (testId === "test_retry_backoff_schedule") {
+      likelyCause =
+        "calculate_retry_delay returns a constant 1-second delay instead of the expected exponential schedule 2 ** attempt.";
+      nextSteps = [
+        "Change delay calculation in app/retry.py to return 2 ** attempt.",
+        "Verify the backoff series yields [1, 2, 4, 8, 16] for attempts 0..4.",
+      ];
+    } else if (testId === "test_retry_stops_after_max_attempts") {
+      likelyCause =
+        "should_retry always returns True, causing retries to loop infinitely past the limit of 5 attempts.";
+      nextSteps = [
+        "Define MAX_ATTEMPTS = 5 at the top of app/retry.py.",
+        "Update should_retry to check attempt < MAX_ATTEMPTS.",
+        "Run tests/test_retry.py to verify termination.",
+      ];
+    }
+
+    const response = {
+      explanation_id: `exp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      generated_at: new Date().toISOString(),
+      explanation: `Test ${testId} failed: ${rule.failMessage}`,
+      likely_cause: likelyCause,
+      suspected_locations: [
+        {
+          path: rule.file,
+          start_line: startLine,
+          end_line: startLine,
+          reason: `Root cause suspected in ${rule.file}.`,
+        },
+      ],
+      next_steps: nextSteps,
+    };
+
+    if (idempotencyKey) {
+      aiSeenIdempotencyKeys.set(idempotencyKey, response);
+    }
+
+    return HttpResponse.json(response, { headers: { "X-Correlation-Id": corrId } });
+  }),
+
+  // POST /ai/tasks/:taskId/self-check
+  http.post("*/api/v1/ai/tasks/:taskId/self-check", async ({ params, request }) => {
+    const corrId = generateUuid();
+    if (serviceDownState.ai || aiScenarioState === "fail") {
+      return HttpResponse.json(
+        { code: "AI_UNAVAILABLE", detail: "AI self-check service unavailable", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+    if (aiScenarioState === "not_configured") {
+      return HttpResponse.json(
+        { code: "AI_NOT_CONFIGURED", detail: "The AI assistant isn't enabled on this server.", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+    if (aiScenarioState === "rate_limited") {
+      return HttpResponse.json(
+        { code: "RATE_LIMITED", detail: "Rate limit exceeded. Try again in 20s.", correlationId: corrId },
+        { status: 429, headers: { "X-Correlation-Id": corrId, "Retry-After": "20" } }
+      );
+    }
+    const authCheck = verifyAuth(request);
+    if (!authCheck.valid) {
+      return HttpResponse.json(
+        { code: authCheck.code, detail: authCheck.detail, correlationId: corrId },
+        { status: authCheck.status, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key") ||
+      request.headers.get("idempotency-key");
+
+    if (idempotencyKey && aiSeenIdempotencyKeys.has(idempotencyKey)) {
+      return HttpResponse.json(aiSeenIdempotencyKeys.get(idempotencyKey), {
+        status: 202,
+        headers: { "X-Correlation-Id": corrId },
+      });
+    }
+
+    const taskId = (params.taskId as string) || "t1";
+    const jobId = `job_sc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    mockAiJobs.set(jobId, {
+      jobId,
+      taskId,
+      kind: "self_check",
+      status: "queued",
+      createdAt: Date.now(),
+      error: null,
+      result: null,
+    });
+
+    const resp = { jobId };
+    if (idempotencyKey) {
+      aiSeenIdempotencyKeys.set(idempotencyKey, resp);
+    }
+    return HttpResponse.json(resp, { status: 202, headers: { "X-Correlation-Id": corrId } });
+  }),
+
+  // POST /ai/tasks/:taskId/draft-summary
+  http.post("*/api/v1/ai/tasks/:taskId/draft-summary", async ({ params, request }) => {
+    const corrId = generateUuid();
+    if (serviceDownState.ai || aiScenarioState === "fail") {
+      return HttpResponse.json(
+        { code: "AI_UNAVAILABLE", detail: "AI draft service unavailable", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+    if (aiScenarioState === "not_configured") {
+      return HttpResponse.json(
+        { code: "AI_NOT_CONFIGURED", detail: "The AI assistant isn't enabled on this server.", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+    if (aiScenarioState === "rate_limited") {
+      return HttpResponse.json(
+        { code: "RATE_LIMITED", detail: "Rate limit exceeded. Try again in 20s.", correlationId: corrId },
+        { status: 429, headers: { "X-Correlation-Id": corrId, "Retry-After": "20" } }
+      );
+    }
+    const authCheck = verifyAuth(request);
+    if (!authCheck.valid) {
+      return HttpResponse.json(
+        { code: authCheck.code, detail: authCheck.detail, correlationId: corrId },
+        { status: authCheck.status, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key") ||
+      request.headers.get("idempotency-key");
+
+    if (idempotencyKey && aiSeenIdempotencyKeys.has(idempotencyKey)) {
+      return HttpResponse.json(aiSeenIdempotencyKeys.get(idempotencyKey), {
+        status: 202,
+        headers: { "X-Correlation-Id": corrId },
+      });
+    }
+
+    const taskId = (params.taskId as string) || "t1";
+    const jobId = `job_ds_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    mockAiJobs.set(jobId, {
+      jobId,
+      taskId,
+      kind: "draft_summary",
+      status: "queued",
+      createdAt: Date.now(),
+      error: null,
+      result: null,
+    });
+
+    const resp = { jobId };
+    if (idempotencyKey) {
+      aiSeenIdempotencyKeys.set(idempotencyKey, resp);
+    }
+    return HttpResponse.json(resp, { status: 202, headers: { "X-Correlation-Id": corrId } });
+  }),
+
+  // GET /ai/jobs/:jobId
+  http.get("*/api/v1/ai/jobs/:jobId", async ({ params }) => {
+    const corrId = generateUuid();
+    const jobId = params.jobId as string;
+    const job = mockAiJobs.get(jobId);
+
+    if (!job) {
+      return HttpResponse.json(
+        { code: "NOT_FOUND", detail: `Job ${jobId} not found`, correlationId: corrId },
+        { status: 404, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    if (serviceDownState.ai) {
+      return HttpResponse.json(
+        { code: "AI_UNAVAILABLE", detail: "AI service unavailable", correlationId: corrId },
+        { status: 503, headers: { "X-Correlation-Id": corrId } }
+      );
+    }
+
+    const elapsed = Date.now() - job.createdAt;
+    if (job.status !== "cancelled" && job.status !== "failed" && job.status !== "completed") {
+      if (elapsed < 500) {
+        job.status = "queued";
+      } else if (elapsed < 2000) {
+        job.status = "running";
+      } else {
+        if (failNextAiJobFlag) {
+          job.status = "failed";
+          job.error = {
+            code: "AI_UNAVAILABLE",
+            message: "The AI assistant is unavailable right now. Your tests and submission are not affected.",
+          };
+          failNextAiJobFlag = false;
+        } else {
+          job.status = "completed";
+          const fileMap = getMockFileMap(job.taskId);
+          if (job.kind === "self_check") {
+            const taskObj = MOCK_TASKS[job.taskId] || MOCK_TASKS.t1;
+            job.result = buildSelfCheck(fileMap, taskObj.criteria, TEST_RULES);
+          } else {
+            // draft_summary
+            const changedFiles = Object.keys(fileMap).filter(
+              (k) => !T1_INITIAL_REPO[k] || T1_INITIAL_REPO[k].content !== fileMap[k].content
+            );
+            const report = buildSelfCheck(fileMap, MOCK_TASKS.t1.criteria, TEST_RULES);
+            const criteriaStatuses: Record<string, string> = {};
+            report.criteria.forEach((c) => {
+              criteriaStatuses[c.criterionId] = c.status;
+            });
+            job.result = buildDraft(changedFiles, criteriaStatuses, fileMap);
+          }
+        }
+      }
+    }
+
+    return HttpResponse.json(
+      {
+        job_id: job.jobId,
+        kind: job.kind,
+        status: job.status,
+        error: job.error,
+        result: job.result,
+      },
+      { headers: { "X-Correlation-Id": corrId } }
+    );
+  }),
+
+  // POST /ai/jobs/:jobId/cancel
+  http.post("*/api/v1/ai/jobs/:jobId/cancel", async ({ params }) => {
+    const corrId = generateUuid();
+    const jobId = params.jobId as string;
+    const job = mockAiJobs.get(jobId);
+
+    if (job && job.status !== "completed" && job.status !== "failed") {
+      job.status = "cancelled";
+    }
+
+    return HttpResponse.json(
+      { jobId, status: "cancelled" },
+      { status: 202, headers: { "X-Correlation-Id": corrId } }
+    );
   }),
 ];
 

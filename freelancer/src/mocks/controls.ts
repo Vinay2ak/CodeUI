@@ -2,6 +2,10 @@ import {
   serviceDownState,
   setForceExpireToken,
   setMockSuspended,
+  setAiScenario,
+  resetAiState,
+  failNextAiJob,
+  AiScenario,
 } from "./handlers";
 import {
   emitMockEvent,
@@ -23,6 +27,9 @@ export interface CbMockControls {
   applyReferenceFix: (taskId: string) => void;
   simulateOwnerDecision: (taskId: string, decision: "approve" | "changes") => void;
   resetTask: (taskId: string) => void;
+  setAiScenario: (scenario: AiScenario) => void;
+  resetAi: () => void;
+  failNextAiJob: (fail?: boolean) => void;
 }
 
 declare global {
@@ -56,6 +63,15 @@ export function registerMockControls(): void {
     },
     resetTask(taskId: string) {
       resetTaskState(taskId);
+    },
+    setAiScenario(scenario: AiScenario) {
+      setAiScenario(scenario);
+    },
+    resetAi() {
+      resetAiState();
+    },
+    failNextAiJob(fail = true) {
+      failNextAiJob(fail);
     },
   };
 }

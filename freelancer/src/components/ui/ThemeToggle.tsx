@@ -3,7 +3,7 @@ import { Sun, Moon } from "lucide-react";
 import { getInitialTheme, toggleTheme, Theme } from "../../lib/theme";
 
 export const ThemeToggle: React.FC = () => {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
     setTheme(getInitialTheme());
@@ -23,14 +23,13 @@ export const ThemeToggle: React.FC = () => {
       onClick={handleToggle}
       aria-label={ariaLabel}
       title={ariaLabel}
-      className="inline-flex items-center justify-center rounded-lg h-9 w-9 text-ink hover:bg-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="inline-flex items-center justify-center rounded-xl h-9 w-9 border border-border bg-card text-foreground hover:bg-raised active:scale-[0.98] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {isDark ? (
-        <Sun className="h-4 w-4 text-cream" aria-hidden="true" />
+        <Sun className="h-4 w-4 text-accent" aria-hidden="true" />
       ) : (
         <Moon className="h-4 w-4 text-primary" aria-hidden="true" />
       )}
     </button>
   );
 };
-

@@ -1,13 +1,26 @@
-export interface RelevantFile {
-  path: string;
-  score: number;
-  reason: string;
-}
-
-export interface AiContext {
-  summary: string;
-  findings: string[];
-  relevantFiles: RelevantFile[];
-  approach: string[];
-}
-
+export type {
+  DependencyKind,
+  RelevantFile,
+  Dependency,
+  AffectedArea,
+  SetupHint,
+  AiContext,
+  Citation,
+  AskAnswer,
+  AiCapabilities,
+  AskRequest,
+  SuspectedLocation,
+  FailureExplanation,
+  CriterionStatus,
+  CriterionCheck,
+  RiskSeverity,
+  RiskCategory,
+  RiskEvidence,
+  IdentifiedRisk,
+  SelfCheckReport,
+  DraftSummary,
+  JobKind,
+  JobStatus,
+  JobError,
+  AiJob,
+} from "../../features/ai-assistant/types";

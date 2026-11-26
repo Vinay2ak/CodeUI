@@ -10,7 +10,7 @@ import {
   Coins,
   FolderGit2,
   Layers,
-  Sparkles,
+  Award,
 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { Chip } from "../../components/ui/Chip";
@@ -100,8 +100,8 @@ export const TaskMarketplace: React.FC<TaskMarketplaceProps> = ({
               <div className="space-y-4 max-w-2xl">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary text-on-primary shadow-sm">
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                    Recommended Starter Project
+                    <Award className="h-3.5 w-3.5" aria-hidden="true" />
+                    Recommended starter project
                   </span>
                   <Chip tone="success" icon={<ShieldCheck className="h-3 w-3" />}>
                     Verified Escrow

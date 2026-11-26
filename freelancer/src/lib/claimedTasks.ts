@@ -30,6 +30,17 @@ export function hasClaimedTask(id: string): boolean {
   return getClaimedTaskIds().includes(id);
 }
 
+export function unclaimTaskId(id: string): string[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const next = getClaimedTaskIds().filter((item) => item !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    return next;
+  } catch {
+    return [];
+  }
+}
+
 export function clearClaimedTasks(): void {
   if (typeof localStorage !== "undefined") {
     localStorage.removeItem(STORAGE_KEY);

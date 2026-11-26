@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   User as UserIcon,
   Mail,
   Github,
   Calendar,
-  CheckCircle2,
   Copy,
   Check,
   Briefcase,
@@ -18,19 +19,22 @@ import {
   X,
   Code2,
   ExternalLink,
-  Sparkles,
+  Layers,
 } from "lucide-react";
 import { profileApi } from "../../services/profile/api";
 import type { FreelancerProfileData } from "../../services/profile/types";
 import type { User } from "../../session/session";
 import { sessionStore } from "../../session/session";
-import { Button } from "../../components/ui/Button";
+import { Button } from "@/components/ui/Button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectOption } from "../../components/ui/Select";
 
 const AVAILABILITY_OPTIONS: SelectOption[] = [
-  { value: "AVAILABLE", label: "Available for Tasks", tone: "success" },
-  { value: "OPEN_TO_OFFERS", label: "Open to Offers", tone: "primary" },
-  { value: "BUSY", label: "Busy / Not Taking Tasks", tone: "muted" },
+  { value: "AVAILABLE", label: "Available for tasks", tone: "success" },
+  { value: "OPEN_TO_OFFERS", label: "Open to offers", tone: "primary" },
+  { value: "BUSY", label: "Busy / not taking tasks", tone: "muted" },
 ];
 
 const RUNNER_IMAGE_OPTIONS: SelectOption[] = [
@@ -57,33 +61,23 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
       setActiveTab(initialTab);
     }
   }, [initialTab]);
-  const [copiedId, setCopiedId] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // New skill input state
+  const [copiedId, setCopiedId] = useState(false);
   const [newSkillInput, setNewSkillInput] = useState("");
 
-  // Query for developer profile details
   const { data: profile } = useQuery<FreelancerProfileData>({
     queryKey: ["freelancer", "full-profile"],
     queryFn: () => profileApi.getFreelancerProfile(user),
     staleTime: 60_000,
   });
 
-  // Local form state for editing details and settings
   const [formData, setFormData] = useState<FreelancerProfileData | null>(null);
 
-  // Initialize form state once profile loads
   React.useEffect(() => {
     if (profile && !formData) {
       setFormData(profile);
     }
   }, [profile, formData]);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
 
   const updateMutation = useMutation({
     mutationFn: (updated: Partial<FreelancerProfileData>) =>
@@ -92,15 +86,15 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
       setFormData(saved);
       queryClient.setQueryData(["freelancer", "full-profile"], saved);
       queryClient.invalidateQueries({ queryKey: ["freelancer", "skills"] });
-      showToast("Profile & Settings saved successfully!");
+      toast.success("Profile and settings saved.");
     },
   });
 
   const handleCopyId = () => {
     const idToCopy = user?.id || "usr_freelancer_cb";
-    navigator.clipboard.writeText(idToCopy);
+    navigator.clipboard?.writeText(idToCopy);
     setCopiedId(true);
-    showToast("Developer ID copied to clipboard!");
+    toast.success(`Copied ${idToCopy}`);
     setTimeout(() => setCopiedId(false), 2500);
   };
 
@@ -133,61 +127,53 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
   const currentData = formData || profile;
 
   return (
-    <div className="flex-1 overflow-y-auto bg-canvas p-4 sm:p-6 lg:p-8 space-y-6 text-ink">
+    <div className="flex-1 overflow-y-auto bg-background p-4 sm:p-6 lg:p-8 text-foreground">
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Floating Toast Notification */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-surface text-ink shadow-2xl flex items-center gap-3 border border-line animate-in fade-in slide-in-from-bottom-4 duration-200">
-            <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
-            <span className="text-xs font-semibold">{toastMessage}</span>
-          </div>
-        )}
-
-        {/* Top Header Card: Developer Identity Overview */}
-        <div className="p-6 sm:p-8 rounded-2xl border border-line bg-surface shadow-sm">
+        {/* Top Header Card */}
+        <Card className="p-6 sm:p-8 rounded-2xl border-border bg-card shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-start sm:items-center gap-4">
-              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-info-bg border border-info-border text-primary flex items-center justify-center font-bold text-2xl sm:text-3xl shrink-0">
+              <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-2xl shrink-0">
                 {(currentData?.displayName || user?.displayName || "D")[0]?.toUpperCase()}
               </div>
 
               <div className="space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {currentData?.displayName || user?.displayName || "Developer"}
                   </h1>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-success-bg text-success border border-success-border uppercase">
-                    <Check className="h-3 w-3" />
-                    <span>Verified Developer</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-bg text-success border border-success-border">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+                    <span>Verified developer</span>
                   </span>
                 </div>
 
-                <p className="text-xs sm:text-sm text-primary font-medium">
-                  {currentData?.headline || "Software Engineer & Systems Specialist"}
+                <p className="text-xs sm:text-sm text-primary dark:text-accent font-medium">
+                  {currentData?.headline || "Software engineer & systems specialist"}
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-muted pt-1">
                   <span className="flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" />
+                    <Mail className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>{user?.email || currentData?.email || "developer@codebridge.dev"}</span>
                   </span>
 
                   <span className="flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" />
+                    <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>Member since 2026</span>
                   </span>
 
                   <button
                     type="button"
                     onClick={handleCopyId}
-                    className="flex items-center gap-1 font-mono hover:text-ink transition-colors"
-                    title="Click to copy Developer UUID"
+                    className="flex items-center gap-1 font-mono tabular-nums hover:text-foreground transition-colors"
+                    title="Click to copy developer ID"
                   >
-                    <span>ID: {(user?.id || "cb-usr-9102").slice(0, 12)}...</span>
+                    <span>{(user?.id || "cb-usr-9102").slice(0, 14)}</span>
                     {copiedId ? (
-                      <Check className="h-3 w-3 text-success" />
+                      <Check className="h-3 w-3 text-success" aria-hidden="true" />
                     ) : (
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3 w-3" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -195,209 +181,220 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
             </div>
           </div>
 
-          {/* Section Navigation Tabs: Developer Details vs Settings */}
-          <div className="flex items-center gap-2 mt-8 pt-6 border-t border-line">
-            <button
-              type="button"
-              onClick={() => setActiveTab("profile")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "profile"
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "text-muted hover:text-ink hover:bg-raised"
-              }`}
-            >
-              <UserIcon className="h-4 w-4" />
-              <span>Developer Details</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("settings")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "settings"
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "text-muted hover:text-ink hover:bg-raised"
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              <span>Settings & Preferences</span>
-            </button>
+          {/* Animated Sliding Pill Tab Switcher */}
+          <div className="mt-6 pt-5 border-t border-border">
+            <div className="inline-flex items-center rounded-full border border-border bg-background p-1">
+              {[
+                { id: "profile" as const, label: "Developer details", icon: UserIcon },
+                { id: "settings" as const, label: "Settings and preferences", icon: Settings },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`relative flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                      isActive ? "text-primary-foreground font-semibold" : "text-muted hover:text-foreground"
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="profile-tab-pill"
+                        transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                        className="absolute inset-0 rounded-full bg-primary shadow-sm"
+                      />
+                    )}
+                    <Icon className="relative z-10 h-3.5 w-3.5" aria-hidden="true" />
+                    <span className="relative z-10">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </Card>
 
         {/* Tab 1: Developer Details */}
         {activeTab === "profile" && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Bio & Professional Summary */}
-            <div className="p-6 rounded-2xl border border-line bg-surface space-y-4 shadow-sm">
-              <div className="flex items-center justify-between pb-3 border-b border-line">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-primary" />
-                  <span>About & Experience</span>
-                </h2>
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Briefcase className="h-4 w-4 text-primary dark:text-accent" aria-hidden="true" />
+                  <span>About and experience</span>
+                </CardTitle>
                 <span className="text-xs text-muted font-medium">
-                  {currentData?.experienceYears || 5}+ Years Experience
+                  {currentData?.experienceYears || 5}+ years experience
                 </span>
-              </div>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <p className="text-sm text-foreground leading-relaxed">
+                  {currentData?.bio ||
+                    "Software engineer specialized in building deterministic backend architectures, containerized microservices, and end-to-end web applications."}
+                </p>
 
-              <p className="text-sm text-ink leading-relaxed">
-                {currentData?.bio ||
-                  "Software engineer specialized in building deterministic backend architectures, containerized microservices, and end-to-end modern web applications."}
-              </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                  <div className="p-3.5 rounded-xl bg-background border border-border space-y-1">
+                    <span className="text-xs font-medium text-muted block">Primary role</span>
+                    <span className="text-xs font-semibold text-foreground block">Full-stack engineer</span>
+                  </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                <div className="p-3.5 rounded-xl bg-canvas border border-line space-y-1">
-                  <span className="text-[11px] font-medium text-muted block">Primary Role</span>
-                  <span className="text-xs font-bold text-ink block">Full-Stack Engineer</span>
-                </div>
+                  <div className="p-3.5 rounded-xl bg-background border border-border space-y-1">
+                    <span className="text-xs font-medium text-muted block">Contract type</span>
+                    <span className="text-xs font-semibold text-foreground block">Escrow milestone driven</span>
+                  </div>
 
-                <div className="p-3.5 rounded-xl bg-canvas border border-line space-y-1">
-                  <span className="text-[11px] font-medium text-muted block">Contract Type</span>
-                  <span className="text-xs font-bold text-ink block">Escrow Milestone Driven</span>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-canvas border border-line space-y-1">
-                  <span className="text-[11px] font-medium text-muted block">GitHub Profile</span>
-                  <a
-                    href={`https://github.com/${currentData?.githubUsername || "codebridge-dev"}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                  >
-                    <Github className="h-3.5 w-3.5" />
-                    <span>@{currentData?.githubUsername || "codebridge-dev"}</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            {/* Skills & Technologies Matrix */}
-            <div className="p-6 rounded-2xl border border-line bg-surface space-y-4 shadow-sm">
-              <div className="flex items-center justify-between pb-3 border-b border-line">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-warning" />
-                  <span>Technical Skills & Stacks</span>
-                </h2>
-                <span className="text-xs text-muted font-mono">
-                  {currentData?.skills.length || 0} Skills Configured
-                </span>
-              </div>
-
-              {/* Skill Badges */}
-              <div className="flex flex-wrap gap-2.5">
-                {(currentData?.skills || []).map((skill) => (
-                  <span
-                    key={skill}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium bg-canvas border border-line text-ink group hover:border-primary/50 transition-colors"
-                  >
-                    <Code2 className="h-3 w-3 text-primary" />
-                    <span>{skill}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSkill(skill)}
-                      aria-label={`Remove ${skill}`}
-                      className="ml-0.5 p-0.5 rounded text-muted hover:text-danger hover:bg-danger-bg transition-colors"
+                  <div className="p-3.5 rounded-xl bg-background border border-border space-y-1">
+                    <span className="text-xs font-medium text-muted block">GitHub profile</span>
+                    <a
+                      href={`https://github.com/${currentData?.githubUsername || "codebridge-dev"}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs font-semibold text-primary dark:text-accent hover:underline flex items-center gap-1"
                     >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
+                      <Github className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>@{currentData?.githubUsername || "codebridge-dev"}</span>
+                      <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                    </a>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Add New Skill Input */}
-              <form onSubmit={handleAddSkill} className="flex items-center gap-2 pt-2">
-                <input
-                  type="text"
-                  placeholder="Add a new skill (e.g. Next.js, Redis, Golang)..."
-                  value={newSkillInput}
-                  onChange={(e) => setNewSkillInput(e.target.value)}
-                  className="flex-1 px-3.5 py-2 text-xs rounded-xl bg-canvas border border-line text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  size="sm"
-                  className="text-xs h-9"
-                  disabled={!newSkillInput.trim()}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  <span>Add Skill</span>
-                </Button>
-              </form>
-            </div>
-          </div>
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-warning" aria-hidden="true" />
+                  <span>Technical skills and stacks</span>
+                </CardTitle>
+                <span className="text-xs text-muted font-mono tabular-nums">
+                  {currentData?.skills.length || 0} skills configured
+                </span>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {(currentData?.skills || []).map((skill) => (
+                    <span
+                      key={skill}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium bg-background border border-border text-foreground hover:border-ring transition-colors"
+                    >
+                      <Code2 className="h-3 w-3 text-primary dark:text-accent" aria-hidden="true" />
+                      <span>{skill}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(skill)}
+                        aria-label={`Remove ${skill}`}
+                        className="ml-0.5 p-0.5 rounded text-muted hover:text-danger hover:bg-danger-bg transition-colors"
+                      >
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                <form onSubmit={handleAddSkill} className="flex items-center gap-2 pt-2">
+                  <Input
+                    type="text"
+                    placeholder="Add a new skill (e.g. FastAPI, Redis, Go)..."
+                    value={newSkillInput}
+                    onChange={(e) => setNewSkillInput(e.target.value)}
+                    className="flex-1 rounded-xl bg-background border-border text-xs h-9"
+                  />
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    size="sm"
+                    className="text-xs h-9 rounded-xl"
+                    disabled={!newSkillInput.trim()}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
+                    <span>Add skill</span>
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
         {/* Tab 2: Settings & Preferences */}
         {activeTab === "settings" && currentData && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Edit Profile Form */}
-            <div className="p-6 rounded-2xl border border-line bg-surface space-y-5 shadow-sm">
-              <div className="pb-3 border-b border-line flex items-center justify-between">
-                <div>
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                    <UserIcon className="h-4 w-4 text-primary" />
-                    <span>Profile Details Settings</span>
-                  </h2>
-                  <p className="text-xs text-muted mt-0.5">
-                    Update your public developer identity and professional bio.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <UserIcon className="h-4 w-4 text-primary dark:text-accent" aria-hidden="true" />
+                  <span>Profile details</span>
+                </CardTitle>
+                <p className="text-xs text-muted mt-0.5">
+                  Update your public developer identity and professional bio.
+                </p>
+              </CardHeader>
+              <CardContent className="pt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-ink block">
-                    Display Name
-                  </label>
-                  <input
+                  <Label htmlFor="profile-display-name" className="text-xs font-medium text-foreground">
+                    Display name
+                  </Label>
+                  <Input
+                    id="profile-display-name"
                     type="text"
                     value={currentData.displayName}
                     onChange={(e) =>
                       setFormData({ ...currentData, displayName: e.target.value })
                     }
-                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-canvas border border-line text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="rounded-xl bg-background border-border text-xs h-9"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-ink block">
-                    Professional Headline
-                  </label>
-                  <input
+                  <Label htmlFor="profile-headline" className="text-xs font-medium text-foreground">
+                    Professional headline
+                  </Label>
+                  <Input
+                    id="profile-headline"
                     type="text"
                     value={currentData.headline}
                     onChange={(e) =>
                       setFormData({ ...currentData, headline: e.target.value })
                     }
-                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-canvas border border-line text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="rounded-xl bg-background border-border text-xs h-9"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-ink block">
-                    GitHub Handle
-                  </label>
+                  <Label htmlFor="profile-github" className="text-xs font-medium text-foreground">
+                    GitHub handle
+                  </Label>
                   <div className="flex items-center">
-                    <span className="px-3 py-2 text-xs bg-canvas border border-r-0 border-line text-muted rounded-l-xl">
+                    <span className="px-3 h-9 flex items-center text-xs bg-raised border border-r-0 border-border text-muted rounded-l-xl">
                       github.com/
                     </span>
-                    <input
+                    <Input
+                      id="profile-github"
                       type="text"
                       value={currentData.githubUsername}
                       onChange={(e) =>
                         setFormData({ ...currentData, githubUsername: e.target.value })
                       }
-                      className="flex-1 px-3.5 py-2 text-xs rounded-r-xl bg-canvas border border-line text-ink focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="flex-1 rounded-l-none rounded-r-xl bg-background border-border text-xs h-9"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="availability-status" className="text-xs font-semibold text-ink block">
-                    Availability Status
-                  </label>
+                  <Label htmlFor="availability-status" className="text-xs font-medium text-foreground block">
+                    Availability status
+                  </Label>
                   <Select
                     id="availability-status"
                     value={currentData.availability}
@@ -408,45 +405,44 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
                       })
                     }
                     options={AVAILABILITY_OPTIONS}
-                    aria-label="Availability Status"
+                    aria-label="Availability status"
                   />
                 </div>
 
                 <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-semibold text-ink block">
-                    Bio & Summary
-                  </label>
+                  <Label htmlFor="profile-bio" className="text-xs font-medium text-foreground">
+                    Bio and summary
+                  </Label>
                   <textarea
+                    id="profile-bio"
                     rows={3}
                     value={currentData.bio}
                     onChange={(e) =>
                       setFormData({ ...currentData, bio: e.target.value })
                     }
-                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-canvas border border-line text-ink focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                    className="w-full px-3.5 py-2 text-xs rounded-xl bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                   />
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Notification Preferences */}
-            <div className="p-6 rounded-2xl border border-line bg-surface space-y-4 shadow-sm">
-              <div className="pb-3 border-b border-line">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                  <Bell className="h-4 w-4 text-primary" />
-                  <span>Notification Preferences</span>
-                </h2>
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-primary dark:text-accent" aria-hidden="true" />
+                  <span>Notification preferences</span>
+                </CardTitle>
                 <p className="text-xs text-muted mt-0.5">
-                  Control the automated alerts sent to your email and workspace.
+                  Control the alerts sent to your email and workspace.
                 </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-canvas border border-line">
+              </CardHeader>
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-background border border-border">
                   <div>
-                    <span className="text-xs font-bold text-ink block">
-                      New Matching Tasks in Radar
+                    <span className="text-xs font-semibold text-foreground block">
+                      New matching tasks in radar
                     </span>
-                    <span className="text-[11px] text-muted block">
+                    <span className="text-xs text-muted block">
                       Receive notifications when new scopes match your proven tech stack.
                     </span>
                   </div>
@@ -462,16 +458,16 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
                         },
                       })
                     }
-                    className="h-4 w-4 rounded border-line text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-canvas border border-line">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-background border border-border">
                   <div>
-                    <span className="text-xs font-bold text-ink block">
-                      Escrow Deposit & Payout Alerts
+                    <span className="text-xs font-semibold text-foreground block">
+                      Escrow deposit and payout alerts
                     </span>
-                    <span className="text-[11px] text-muted block">
+                    <span className="text-xs text-muted block">
                       Instant alerts when client funds lock or clear to your account.
                     </span>
                   </div>
@@ -487,16 +483,16 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
                         },
                       })
                     }
-                    className="h-4 w-4 rounded border-line text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-canvas border border-line">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-background border border-border">
                   <div>
-                    <span className="text-xs font-bold text-ink block">
-                      Automated Test-Gate Results
+                    <span className="text-xs font-semibold text-foreground block">
+                      Automated test-gate results
                     </span>
-                    <span className="text-[11px] text-muted block">
+                    <span className="text-xs text-muted block">
                       Receive pass/fail logs when your container submission checks run.
                     </span>
                   </div>
@@ -512,29 +508,27 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
                         },
                       })
                     }
-                    className="h-4 w-4 rounded border-line text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                   />
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Workspace & Container Settings */}
-            <div className="p-6 rounded-2xl border border-line bg-surface space-y-4 shadow-sm">
-              <div className="pb-3 border-b border-line">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-primary" />
-                  <span>Workspace & Docker Settings</span>
-                </h2>
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-primary dark:text-accent" aria-hidden="true" />
+                  <span>Workspace and container settings</span>
+                </CardTitle>
                 <p className="text-xs text-muted mt-0.5">
-                  Configure default runtime container settings for the Controlled Workspace.
+                  Configure default runtime container settings for your workspace.
                 </p>
-              </div>
-
-              <div className="space-y-3">
+              </CardHeader>
+              <CardContent className="pt-4 space-y-3">
                 <div className="space-y-1.5">
-                  <label htmlFor="default-runner-image" className="text-xs font-semibold text-ink block">
-                    Default Runner Image
-                  </label>
+                  <Label htmlFor="default-runner-image" className="text-xs font-medium text-foreground block">
+                    Default runner image
+                  </Label>
                   <Select
                     id="default-runner-image"
                     value={currentData.workspaceSettings.defaultImage}
@@ -548,16 +542,16 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
                       })
                     }
                     options={RUNNER_IMAGE_OPTIONS}
-                    aria-label="Default Runner Image"
+                    aria-label="Default runner image"
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl bg-canvas border border-line">
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-background border border-border">
                   <div>
-                    <span className="text-xs font-bold text-ink block">
-                      Auto-Run Test Gate on Save
+                    <span className="text-xs font-semibold text-foreground block">
+                      Auto-run test gate on save
                     </span>
-                    <span className="text-[11px] text-muted block">
+                    <span className="text-xs text-muted block">
                       Automatically execute test suite runner when solution changes are saved.
                     </span>
                   </div>
@@ -573,56 +567,55 @@ export const VerifiedPortfolioView: React.FC<VerifiedPortfolioViewProps> = ({
                         },
                       })
                     }
-                    className="h-4 w-4 rounded border-line text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                   />
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Security & Session Actions */}
-            <div className="p-6 rounded-2xl border border-line bg-surface space-y-4 shadow-sm">
-              <div className="pb-3 border-b border-line">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-muted flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span>Security & Account Session</span>
-                </h2>
+            <Card className="rounded-2xl border-border bg-card shadow-sm">
+              <CardHeader className="pb-3 border-b border-border">
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary dark:text-accent" aria-hidden="true" />
+                  <span>Security and account session</span>
+                </CardTitle>
                 <p className="text-xs text-muted mt-0.5">
                   Session credentials and authentication state.
                 </p>
-              </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-background border border-border">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground block">Active session</span>
+                    <span className="text-xs text-muted block">
+                      Signed in as {user?.email || "developer@codebridge.dev"}.
+                    </span>
+                  </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-canvas border border-line">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-ink block">Active Session</span>
-                  <span className="text-[11px] text-muted block">
-                    Signed in as {user?.email || "developer@codebridge.dev"} with JWT Bearer token.
-                  </span>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => sessionStore.logout()}
+                    className="text-xs rounded-xl shrink-0"
+                  >
+                    Sign out
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
 
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => sessionStore.logout()}
-                  className="text-xs shrink-0"
-                >
-                  Sign Out
-                </Button>
-              </div>
-            </div>
-
-            {/* Save Settings Button */}
             <div className="flex justify-end pt-2">
               <Button
                 variant="primary"
                 onClick={handleSaveAll}
                 disabled={updateMutation.isPending}
-                className="text-xs px-6 py-2.5 font-bold shadow-md"
+                className="text-xs px-6 py-2.5 rounded-xl font-semibold shadow-sm"
               >
-                <Save className="h-4 w-4 mr-2" />
-                <span>{updateMutation.isPending ? "Saving..." : "Save Settings"}</span>
+                <Save className="h-4 w-4 mr-2" aria-hidden="true" />
+                <span>{updateMutation.isPending ? "Saving..." : "Save settings"}</span>
               </Button>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

@@ -32,6 +32,10 @@ export const DevDrawer: React.FC<DevDrawerProps> = ({ open, onClose, taskId }) =
     notification: false,
   });
 
+  const [aiScenario, setAiScenario] = useState<
+    "ok" | "slow" | "fail" | "not_configured" | "no_evidence" | "rate_limited" | "hostile"
+  >("ok");
+
   const [selectedEventType, setSelectedEventType] = useState("workspace.status_changed");
 
   const session = useSyncExternalStore(
@@ -229,6 +233,58 @@ export const DevDrawer: React.FC<DevDrawerProps> = ({ open, onClose, taskId }) =
                   />
                 </label>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* AI Scenarios & Diagnostics (Mock) */}
+        {env.useMocks && (
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-muted uppercase tracking-wider text-[11px]">
+                AI Assistant Scenarios
+              </h3>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setAiScenario("ok");
+                    window.__cbMock?.resetAi();
+                  }}
+                >
+                  Reset AI
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    window.__cbMock?.failNextAiJob(true);
+                  }}
+                >
+                  Fail next AI job
+                </Button>
+              </div>
+            </div>
+            <div className="rounded-lg border border-line bg-raised p-2.5">
+              <label className="block text-xs text-muted mb-1">Simulated Scenario</label>
+              <select
+                value={aiScenario}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  setAiScenario(val);
+                  window.__cbMock?.setAiScenario(val);
+                }}
+                className="w-full rounded border border-line-strong bg-input px-2 py-1 text-xs text-ink font-mono"
+              >
+                <option value="ok">ok (normal response)</option>
+                <option value="slow">slow (25s latency)</option>
+                <option value="fail">fail (503 AI_UNAVAILABLE)</option>
+                <option value="not_configured">not_configured (503 AI_NOT_CONFIGURED)</option>
+                <option value="no_evidence">no_evidence (ungrounded answer)</option>
+                <option value="rate_limited">rate_limited (429 on 3rd query)</option>
+                <option value="hostile">hostile (injected scripts/secrets/traversal)</option>
+              </select>
             </div>
           </section>
         )}

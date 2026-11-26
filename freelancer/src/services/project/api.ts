@@ -1,5 +1,6 @@
 import { request } from "../../lib/http";
 import { env } from "../../lib/env";
+import { claimTaskId, hasClaimedTask } from "../../lib/claimedTasks";
 import type {
   ProjectScope,
   WorkspaceContainerInfo,
@@ -84,6 +85,16 @@ export const INITIAL_OPEN_PROJECTS: ProjectScope[] = [
   },
 ];
 
+const applyLocalClaim = (p: ProjectScope): ProjectScope => {
+  if (
+    hasClaimedTask(p.id) &&
+    (p.projectState === "open" || p.projectState === "assigned" || p.projectState === "draft")
+  ) {
+    return { ...p, projectState: "in_progress" };
+  }
+  return p;
+};
+
 export const projectApi = {
   async getProjects(): Promise<ProjectScope[]> {
     try {
@@ -91,16 +102,16 @@ export const projectApi = {
       const res = await request<{ items?: any[]; data?: any[] }>("/api/v1/projects");
       const list = res.items || res.data || (Array.isArray(res) ? res : []);
       if (Array.isArray(list)) {
-        return list.map(adaptProjectScope);
+        return list.map(adaptProjectScope).map(applyLocalClaim);
       }
     } catch (err) {
       if (env.useMocks) {
-        return INITIAL_OPEN_PROJECTS;
+        return INITIAL_OPEN_PROJECTS.map(applyLocalClaim);
       }
       throw err;
     }
     if (env.useMocks) {
-      return INITIAL_OPEN_PROJECTS;
+      return INITIAL_OPEN_PROJECTS.map(applyLocalClaim);
     }
     return [];
   },
@@ -110,11 +121,11 @@ export const projectApi = {
       // Contract line 365 & 691: GET /api/v1/projects/{id}
       const raw = await request<any>(`/api/v1/projects/${id}`);
       if (raw) {
-        return adaptProjectScope(raw);
+        return applyLocalClaim(adaptProjectScope(raw));
       }
     } catch (err) {
       if (env.useMocks) {
-        return (
+        return applyLocalClaim(
           INITIAL_OPEN_PROJECTS.find((p) => p.id === id) ||
           PRD_FLAGSHIP_PROJECT
         );
@@ -123,12 +134,26 @@ export const projectApi = {
     }
 
     if (env.useMocks) {
-      return (
+      return applyLocalClaim(
         INITIAL_OPEN_PROJECTS.find((p) => p.id === id) ||
         PRD_FLAGSHIP_PROJECT
       );
     }
     throw new Error(`Project ${id} not found`);
+  },
+
+  async acceptProject(id: string): Promise<ProjectScope> {
+    claimTaskId(id);
+    try {
+      const raw = await request<any>(`/api/v1/projects/${id}/accept`, {
+        method: "POST",
+      });
+      if (raw) return applyLocalClaim(adaptProjectScope(raw));
+    } catch {
+      // Persist locally via claimTaskId when backend accept route is not exposed
+    }
+    const current = await this.getProject(id);
+    return { ...current, projectState: "in_progress" };
   },
 
   async updateProjectState(id: string, partial: Partial<ProjectScope>): Promise<ProjectScope> {

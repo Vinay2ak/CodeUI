@@ -13,6 +13,8 @@ export interface EnvConfig {
   mockTokenTtlSeconds: number;
   githubMode: "mock" | "off";
   grafanaUrl: string;
+  featureAi: string | undefined;
+  aiFeatures: string;
 }
 
 function parseEnv(): EnvConfig {
@@ -60,6 +62,8 @@ function parseEnv(): EnvConfig {
   const mockTokenTtl = parseInt((env.VITE_MOCK_TOKEN_TTL_SECONDS as string | undefined) || "900", 10);
   const mockTokenTtlSeconds = isNaN(mockTokenTtl) ? 900 : mockTokenTtl;
   const grafanaUrl = (env.VITE_GRAFANA_URL as string | undefined) || "http://192.168.0.198:3001/d/codebridge-analytics/codebridge-platform-analytics?orgId=1&kiosk";
+  const featureAi = env.VITE_FEATURE_AI as string | undefined;
+  const aiFeatures = (env.VITE_AI_FEATURES as string | undefined) || "";
 
   return {
     useMocks,
@@ -76,6 +80,8 @@ function parseEnv(): EnvConfig {
     mockTokenTtlSeconds,
     githubMode,
     grafanaUrl,
+    featureAi,
+    aiFeatures,
   };
 }
 

@@ -5,11 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="" />
-    <title>Developer Workspace — CodeBridge</title>
+    <title>Freelancer Portal — CodeBridge</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <script>
@@ -18,18 +18,20 @@
           var params = new URLSearchParams(window.location.search);
           var themeParam = params.get("theme");
           var saved = localStorage.getItem("cb-theme");
-          if (themeParam === "light" || (saved === "light" && themeParam !== "dark")) {
-            document.documentElement.setAttribute("data-theme", "light");
+          var useDark = themeParam === "dark" || (saved === "dark" && themeParam !== "light");
+          if (useDark) {
+            document.documentElement.classList.add("dark");
+            document.documentElement.setAttribute("data-theme", "dark");
           } else {
-            document.documentElement.removeAttribute("data-theme");
+            document.documentElement.classList.remove("dark");
+            document.documentElement.setAttribute("data-theme", "light");
           }
         } catch (e) {}
       })();
     </script>
   </head>
-  <body class="bg-canvas text-ink min-h-screen">
+  <body class="bg-background text-foreground min-h-screen">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

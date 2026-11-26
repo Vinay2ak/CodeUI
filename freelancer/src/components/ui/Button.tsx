@@ -1,46 +1,63 @@
-import React from "react";
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
-  size?: "sm" | "md" | "lg";
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-primary text-primary-foreground shadow hover:bg-primary-hover active:bg-primary-active",
+        primary:
+          "bg-primary text-on-primary shadow hover:bg-primary-hover active:bg-primary-active disabled:bg-raised disabled:text-muted",
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-sm hover:opacity-90",
+        danger:
+          "bg-danger text-on-danger shadow-sm hover:opacity-90 active:opacity-100 disabled:bg-raised disabled:text-muted",
+        outline:
+          "border border-line-strong bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+        secondary:
+          "border border-line-strong bg-secondary text-secondary-foreground shadow-sm hover:bg-raised active:bg-surface",
+        ghost:
+          "text-ink hover:bg-accent hover:text-accent-foreground active:bg-surface",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        md: "h-10 px-4 py-2",
+        sm: "h-8 rounded-lg px-3 text-xs",
+        lg: "h-12 rounded-lg px-6 text-base",
+        icon: "h-9 w-9 [&_svg]:size-4",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = "primary", size = "md", className = "", children, ...props }, ref) => {
-    let sizeClasses = "h-10 px-4 text-sm";
-    if (size === "sm") sizeClasses = "h-8 px-3 text-xs";
-    if (size === "lg") sizeClasses = "h-12 px-6 text-base";
-
-    let variantClasses = "";
-    switch (variant) {
-      case "primary":
-        variantClasses =
-          "bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active disabled:bg-raised disabled:text-muted disabled:cursor-not-allowed";
-        break;
-      case "secondary":
-        variantClasses =
-          "border border-line-strong text-ink hover:bg-raised active:bg-surface disabled:text-muted disabled:cursor-not-allowed";
-        break;
-      case "ghost":
-        variantClasses = "text-ink hover:bg-raised active:bg-surface disabled:text-muted disabled:cursor-not-allowed";
-        break;
-      case "danger":
-        variantClasses =
-          "bg-danger text-on-danger hover:opacity-90 active:opacity-100 disabled:bg-raised disabled:text-muted disabled:cursor-not-allowed";
-        break;
-    }
-
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
     return (
-      <button
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${sizeClasses} ${variantClasses} ${className}`}
         {...props}
-      >
-        {children}
-      </button>
-    );
+      />
+    )
   }
-);
+)
+Button.displayName = "Button"
 
-Button.displayName = "Button";
-
+export { Button, buttonVariants }

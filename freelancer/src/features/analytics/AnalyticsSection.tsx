@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { ExternalLink, AlertTriangle, RefreshCw } from 'lucide-react';
 import { env } from '../../lib/env';
 import { Button } from '../../components/ui/Button';
@@ -190,7 +191,7 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
               ref={radioGroupRef}
               role="radiogroup"
               aria-labelledby="time-range-label"
-              className={`hidden sm:inline-flex rounded-lg border border-line bg-surface p-0.5 ${
+              className={`hidden sm:inline-flex rounded-full border border-border bg-card p-1 ${
                 isControlsDisabled ? 'opacity-50 pointer-events-none' : ''
               }`}
             >
@@ -206,13 +207,20 @@ export const AnalyticsSection: React.FC<AnalyticsSectionProps> = ({
                     disabled={isControlsDisabled}
                     onClick={() => handleRangeChange(opt.id)}
                     onKeyDown={(e) => handleRadioKeyDown(e, idx)}
-                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                    className={`relative px-3.5 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       isSelected
-                        ? 'bg-primary text-on-primary font-semibold'
-                        : 'text-muted hover:text-ink hover:bg-raised'
+                        ? 'text-primary-foreground font-semibold'
+                        : 'text-muted hover:text-foreground'
                     }`}
                   >
-                    {opt.label}
+                    {isSelected && (
+                      <motion.span
+                        layoutId="analytics-range-pill"
+                        transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                        className="absolute inset-0 rounded-full bg-primary shadow-sm"
+                      />
+                    )}
+                    <span className="relative z-10">{opt.label}</span>
                   </button>
                 );
               })}

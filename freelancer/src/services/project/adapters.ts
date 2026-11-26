@@ -88,6 +88,20 @@ export function adaptDockerWorkspaceState(rawState?: string): DockerWorkspaceSta
   }
 }
 
+function normalizeRepoFromString(rawValue: string): { repoName: string; repoUrl?: string } | null {
+  const trimmed = rawValue.trim();
+  if (!trimmed) return null;
+  const ghMatch = trimmed.match(/https?:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?$/i);
+  if (ghMatch) {
+    const repoName = ghMatch[1];
+    return { repoName, repoUrl: `https://github.com/${repoName}` };
+  }
+  if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(trimmed)) {
+    return { repoName: trimmed, repoUrl: `https://github.com/${trimmed}` };
+  }
+  return null;
+}
+
 /**
  * Adapts backend project response (GET /api/v1/projects or GET /api/v1/projects/{id})
  */
@@ -95,9 +109,19 @@ export function adaptProjectScope(p: any): ProjectScope {
   const id = String(p.id || p.project_id || "proj_1024");
   const title = String(p.title || "Project Scope");
   const description = String(p.description || "");
-  const expectedResult = String(
+  const rawExpected = String(
     p.expected_result || p.expectedResult || "Pass all deterministic test suites and acceptance criteria."
   );
+
+  // Extract optional embedded Repository: https://github.com/... metadata and strip from display text
+  const embeddedMatch = rawExpected.match(
+    /(?:\r?\n){1,2}Repository:\s*(https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?)/i
+  );
+  const embeddedRepoUrl = embeddedMatch ? embeddedMatch[1] : "";
+  const expectedResult = embeddedMatch
+    ? rawExpected.replace(embeddedMatch[0], "").trim() || description || "Pass all deterministic test suites and acceptance criteria."
+    : rawExpected;
+
   const budget = Number(p.budget ?? 5000);
   const currency = String(p.currency || "INR");
   const deadline = String(p.deadline || new Date(Date.now() + 86400000 * 7).toISOString());
@@ -113,9 +137,36 @@ export function adaptProjectScope(p: any): ProjectScope {
   const escrowState = adaptEscrowState(p.escrow_status || p.escrowState);
 
   const gh = p.github || {};
-  const repoName = String(gh.repo_name || gh.repoName || p.repo_name || "codebridge/payments-service");
+  const explicitRepoCandidate =
+    gh.html_url ||
+    gh.repo_url ||
+    gh.repoUrl ||
+    gh.full_name ||
+    gh.repo_name ||
+    gh.repoName ||
+    p.repo_url ||
+    p.repoUrl ||
+    p.github_url ||
+    p.githubUrl ||
+    p.repository_url ||
+    embeddedRepoUrl ||
+    p.repo_name ||
+    p.repoName ||
+    "";
+
+  const parsedExplicit = normalizeRepoFromString(String(explicitRepoCandidate));
+  const fallbackSlugRepo = typeof p.repo === "string" && !p.repo.startsWith("codebridge/")
+    ? normalizeRepoFromString(p.repo)
+    : null;
+  const resolvedRepo =
+    parsedExplicit ||
+    fallbackSlugRepo ||
+    (typeof p.repo === "string" && p.repo.trim()
+      ? { repoName: p.repo.trim(), repoUrl: undefined }
+      : { repoName: "codebridge/payments-service", repoUrl: undefined });
+
   const defaultBranch = String(gh.default_branch || gh.defaultBranch || "main");
-  const commitHash = String(gh.commit_hash || gh.commitHash || gh.commit || "c8f492b");
+  const commitHash = String(gh.commit_hash || gh.commitHash || gh.commit || "HEAD");
 
   return {
     id,
@@ -130,10 +181,13 @@ export function adaptProjectScope(p: any): ProjectScope {
     projectState,
     escrowState,
     github: {
-      status: "connected",
-      repoName,
+      status: gh.status === "pending" || gh.status === "revoked" ? gh.status : "connected",
+      repoName: resolvedRepo.repoName,
+      repoUrl: resolvedRepo.repoUrl,
       defaultBranch,
       commitHash,
+      isPrivate: typeof gh.is_private === "boolean" ? gh.is_private : undefined,
+      description: gh.description ? String(gh.description) : undefined,
       accessLevel: "Controlled Read-Only (No Owner Password Shared)",
     },
     changesRequestedNote: p.changes_requested_note || p.changesRequestedNote,

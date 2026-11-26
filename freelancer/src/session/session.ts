@@ -2,6 +2,8 @@ import { env } from "../lib/env";
 import { configureHttpAuth, request } from "../lib/http";
 import { ApiError } from "../lib/errors";
 import { realtimeManager } from "../realtime/manager";
+import { clearAllAskHistory } from "../features/ai-assistant/askHistory";
+import { clearAllAiCaches } from "../features/ai-assistant/cache";
 
 export interface User {
   id: string;
@@ -442,6 +444,8 @@ class SessionStore {
 
   private clearSession(): void {
     realtimeManager.stop();
+    clearAllAskHistory();
+    clearAllAiCaches();
     this.inMemoryRefreshToken = null;
     this.setState({
       status: "expired",

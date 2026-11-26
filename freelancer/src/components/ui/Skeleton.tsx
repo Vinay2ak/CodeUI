@@ -1,22 +1,20 @@
-import React from "react";
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
-export interface SkeletonProps {
-  className?: string;
-  width?: string;
-  height?: string;
+export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+  width?: string
+  height?: string
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({
-  className = "",
-  width,
-  height,
-}) => {
+function Skeleton({ className, width, height, style, ...props }: SkeletonProps) {
   return (
     <div
       aria-hidden="true"
-      style={{ width, height }}
-      className={`bg-raised rounded-md animate-pulse ${className}`}
+      style={{ width, height, ...style }}
+      className={cn("animate-pulse rounded-md bg-raised", className)}
+      {...props}
     />
-  );
-};
+  )
+}
 
+export { Skeleton }

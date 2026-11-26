@@ -234,6 +234,11 @@ export function getMockFiles(taskId: string): RepoFileSnapshot[] {
   return Object.values(files);
 }
 
+export function getMockFileMap(taskId: string): Record<string, RepoFileSnapshot> {
+  const norm = normalizeTaskId(taskId);
+  return repoFiles[taskId] || repoFiles[norm] || { ...T1_INITIAL_REPO };
+}
+
 export function getMockFileContent(taskId: string, filePath: string): RepoFileSnapshot | null {
   const norm = normalizeTaskId(taskId);
   const files = repoFiles[taskId] || repoFiles[norm] || {};

@@ -108,3 +108,74 @@ Event types consumed by the Freelancer app:
   5. Client re-sends auth message after each token refresh.
 - Reconnection uses exponential backoff: `min(30000, 1000 * 2^attempt) ± 20% jitter`.
 - Mock mode: Handled via `BroadcastChannel("cb-events")` plus local event simulators.
+
+## 9. AI Assistant (Part A)
+- **Scope & Role**: Advisory code intelligence assisting freelancers in understanding task context, architecture, dependencies, and codebases before and during editing.
+- **Principles & Security**:
+  - AI is strictly advisory: it never executes shell commands, writes to workspace files, triggers submissions, or modifies deterministic container test gates.
+  - The client transmits references only (`taskId`, user question string 3-500 chars, optional `focusPath`). Raw file contents, diffs, terminal outputs, and logs are NEVER sent by the browser.
+  - All AI responses are considered untrusted text: sanitized, bounded in size, control codes stripped, secrets masked, and rendered strictly as PLAIN TEXT (no HTML, script tags, auto-links, or markdown renderer execution).
+- **Service Endpoints** (under `/api/v1`, Bearer auth, camelCase JSON, role `freelancer` assigned to the task only, otherwise `403 FORBIDDEN`):
+  - `GET /ai/capabilities` -> `{ provider: "none" | "mock" | "llm", features: { context, ask, explain, selfCheck, draft: boolean }, limits: { askPerHour: number | null } }`. A 404 response means unknown (falls back to client feature flags).
+  - `GET /ai/context/{taskId}` -> `AiContext` (or 404 NOT_FOUND when absent).
+  - `POST /ai/tasks/{taskId}/ask` (Header `Idempotency-Key`) `{ question: string, focusPath?: string }` -> `200 AskAnswer`.
+- **Types**:
+  - `AiContext`: `{ generatedAt?: string, repoCommitSha?: string, summary: string, findings: string[], relevantFiles: { path: string, startLine: number | null, endLine: number | null, score: number, reason: string }[], dependencies: { name: string, kind: "runtime" | "dev" | "service" | "other", note: string }[], affectedAreas: { name: string, note: string }[], setupHints: { command: string, note: string }[], approach: string[] }`
+  - `AskAnswer`: `{ answerId: string, generatedAt: string, repoCommitSha: string, grounding: "grounded" | "no_evidence", answer: string, citations: { path: string, startLine: number | null, endLine: number | null, snippet: string | null }[], remaining: number | null }`
+- **Error Codes**:
+  - `AI_NOT_CONFIGURED` (501 or 503)
+  - `AI_UNAVAILABLE` (503)
+  - `AI_TIMEOUT` (504)
+  - `RATE_LIMITED` (429 with `Retry-After` header)
+  - `NOT_FOUND` (404)
+  - `FORBIDDEN` (403)
+  - `CONFLICT` (409)
+  - `VALIDATION_FAILED` (422)
+
+
+
+## AI Assistant Contract Specification (Part B)
+
+All endpoints reside under `/api/v1`, accept Bearer token authentication, communicate via camelCase JSON, and authorize the assigned freelancer for the specified task only.
+
+### 1. Failure Explanation
+- `POST /ai/tasks/{taskId}/explain-failure`
+  - Headers: `Idempotency-Key: <uuid>`
+  - Request: `{ runId: string, testId: string }`
+  - Response (200):
+    ```json
+    {
+      "explanationId": "string",
+      "generatedAt": "ISO string",
+      "explanation": "string (clamped 1200)",
+      "likelyCause": "string (clamped 400)",
+      "suspectedLocations": [
+        {
+          "path": "string",
+          "startLine": 1,
+          "endLine": 1,
+          "reason": "string"
+        }
+      ],
+      "nextSteps": ["string (max 6 items, clamped 240)"]
+    }
+    ```
+
+### 2. Async Jobs (Self-Check and Draft Summary)
+- `POST /ai/tasks/{taskId}/self-check` -> `202 { "jobId": "string" }`
+- `POST /ai/tasks/{taskId}/draft-summary` -> `202 { "jobId": "string" }`
+- `GET /ai/jobs/{jobId}` ->
+  ```json
+  {
+    "jobId": "string",
+    "kind": "self_check | draft_summary",
+    "status": "queued | running | completed | failed | cancelled",
+    "error": { "code": "string", "message": "string" } | null,
+    "result": SelfCheckReport | DraftSummary | null
+  }
+  ```
+- `POST /ai/jobs/{jobId}/cancel` -> `202 { "jobId": "string", "status": "cancelled" }`
+
+### 3. Schemas
+- `SelfCheckReport`: `{ reportId, generatedAt, repoCommitSha, criteria: [...], risks: [...] }`
+- `DraftSummary`: `{ draftId, generatedAt, summary, filesModified: [...], notes }`

@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Terminal as TerminalIcon, CheckSquare, ChevronUp, ChevronDown } from "lucide-react";
+import { Terminal as TerminalIcon, CheckSquare, MessageSquareText, ChevronUp, ChevronDown } from "lucide-react";
 import { Tabs, TabItem } from "../../components/ui/Tabs";
 import { Terminal } from "./Terminal";
 import { TestsPanel } from "./TestsPanel";
+import { AskAiPanel } from "./AskAiPanel";
 import { FileItem } from "../../services/workspace/types";
 import { Run } from "../../services/submission/types";
 import { ErrorBoundary } from "../../app/ErrorBoundary";
+import { aiFeature } from "../../lib/features";
 
 interface DockProps {
   taskId: string;
@@ -23,8 +25,10 @@ interface DockProps {
   onSaveAll: () => Promise<void>;
   onOpenFile: (path: string) => void;
   terminalInputRef?: React.RefObject<HTMLInputElement>;
-  activeDockTab?: "terminal" | "tests";
-  onTabChange?: (tab: "terminal" | "tests") => void;
+  activeDockTab?: "terminal" | "tests" | "ask";
+  onTabChange?: (tab: "terminal" | "tests" | "ask") => void;
+  lastSavedAt?: number | null;
+  activeEditorFile?: string | null;
 }
 
 export const Dock: React.FC<DockProps> = ({
@@ -45,27 +49,40 @@ export const Dock: React.FC<DockProps> = ({
   terminalInputRef,
   activeDockTab: controlledTab,
   onTabChange,
+  lastSavedAt,
+  activeEditorFile,
 }) => {
-  const [internalTab, setInternalTab] = useState<"terminal" | "tests">("terminal");
+  const [internalTab, setInternalTab] = useState<"terminal" | "tests" | "ask">("terminal");
   const [collapsed, setCollapsed] = useState(false);
 
   const activeTab = controlledTab || internalTab;
-  const setTab = (tab: "terminal" | "tests") => {
+  const setTab = (tab: "terminal" | "tests" | "ask") => {
     setInternalTab(tab);
     onTabChange?.(tab);
   };
+
+  const isAskAiEnabled = aiFeature("ask");
 
   const tabs: TabItem[] = [
     {
       id: "terminal",
       label: "Terminal",
-      icon: <TerminalIcon className="h-3.5 w-3.5" aria-hidden="true" />,
+      icon: <TerminalIcon className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />,
     },
     {
       id: "tests",
       label: "Tests",
-      icon: <CheckSquare className="h-3.5 w-3.5" aria-hidden="true" />,
+      icon: <CheckSquare className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />,
     },
+    ...(isAskAiEnabled
+      ? [
+          {
+            id: "ask",
+            label: "Ask AI",
+            icon: <MessageSquareText className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -107,7 +124,7 @@ export const Dock: React.FC<DockProps> = ({
       {!collapsed && (
         <div className="flex-1 min-h-0 overflow-hidden">
           <ErrorBoundary fallbackTitle="Dock Service Error">
-            {activeTab === "terminal" ? (
+            {activeTab === "terminal" && (
               <Terminal
                 files={files}
                 fileContents={fileContents}
@@ -118,7 +135,8 @@ export const Dock: React.FC<DockProps> = ({
                 onRunTests={onRunTests}
                 terminalInputRef={terminalInputRef}
               />
-            ) : (
+            )}
+            {activeTab === "tests" && (
               <TestsPanel
                 taskId={taskId}
                 isWorkspaceRunning={isWorkspaceRunning}
@@ -129,6 +147,17 @@ export const Dock: React.FC<DockProps> = ({
                 onRunTests={onRunTests}
                 onSaveAll={onSaveAll}
                 onOpenFile={onOpenFile}
+                files={files}
+                lastSavedAt={lastSavedAt}
+              />
+            )}
+            {activeTab === "ask" && (
+              <AskAiPanel
+                taskId={taskId}
+                files={files}
+                onOpenFile={onOpenFile}
+                lastSavedAt={lastSavedAt}
+                activeEditorFile={activeEditorFile}
               />
             )}
           </ErrorBoundary>

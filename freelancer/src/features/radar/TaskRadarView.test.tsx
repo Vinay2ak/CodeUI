@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TaskRadarView } from "./TaskRadarView";
 import { projectApi } from "../../services/project/api";
 import type { ProjectScope } from "../../services/project/types";
+import { clearClaimedTasks } from "../../lib/claimedTasks";
 
 const testProject: ProjectScope = {
   id: "proj_1024",
@@ -42,7 +43,12 @@ function renderWithClient(ui: React.ReactElement) {
 
 describe("TaskRadarView Grid & Details Popup", () => {
   beforeEach(() => {
+    clearClaimedTasks();
     vi.spyOn(projectApi, "getProjects").mockResolvedValue([testProject]);
+    vi.spyOn(projectApi, "acceptProject").mockResolvedValue({
+      ...testProject,
+      projectState: "in_progress",
+    });
   });
 
   it("renders multiple project boxes with title, fixed price, and Project Description button", async () => {
@@ -116,5 +122,29 @@ describe("TaskRadarView Grid & Details Popup", () => {
     // Clicking Open workspace invokes callback
     fireEvent.click(openWorkspaceBtn);
     expect(onOpenWorkspace).toHaveBeenCalledWith("proj_1024");
+  });
+
+  it("persists accepted task state after navigating away and returning to Task Radar", async () => {
+    const onOpenWorkspace = vi.fn();
+    const firstRender = renderWithClient(<TaskRadarView onOpenWorkspace={onOpenWorkspace} />);
+
+    // Open modal and accept task
+    fireEvent.click(await screen.findByRole("button", { name: /Project Description/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Accept task" }));
+
+    // Unmount TaskRadarView (simulates switching to Workspace)
+    firstRender.unmount();
+
+    // Remount TaskRadarView (simulates returning to Tasks Radar)
+    renderWithClient(<TaskRadarView onOpenWorkspace={onOpenWorkspace} />);
+
+    // Card button now indicates workspace is already accepted/active
+    const viewScopeBtn = await screen.findByRole("button", { name: /Project Description for/i });
+    expect(viewScopeBtn).toHaveTextContent("View workspace scope");
+
+    // Reopening modal shows Open workspace instead of Accept task
+    fireEvent.click(viewScopeBtn);
+    expect(screen.getByRole("button", { name: "Open workspace" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Accept task" })).not.toBeInTheDocument();
   });
 });

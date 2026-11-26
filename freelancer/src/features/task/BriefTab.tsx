@@ -129,7 +129,7 @@ export const BriefTab: React.FC<BriefTabProps> = ({ taskId }) => {
             {task.ownerName}
           </span>
         </div>
-        <h3 className="text-lg font-bold text-ink mb-3">{task.title}</h3>
+        <h3 className="text-lg font-bold text-ink mb-3 break-words [overflow-wrap:anywhere]">{task.title}</h3>
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
           <div className="flex items-center gap-1.5">
@@ -189,7 +189,7 @@ export const BriefTab: React.FC<BriefTabProps> = ({ taskId }) => {
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
           Task Description
         </h4>
-        <div className="space-y-2.5 text-muted leading-relaxed">
+        <div className="space-y-2.5 text-muted leading-relaxed break-words [overflow-wrap:anywhere]">
           {task.brief.map((paragraph, idx) => (
             <p key={idx}>{paragraph}</p>
           ))}
@@ -208,7 +208,7 @@ export const BriefTab: React.FC<BriefTabProps> = ({ taskId }) => {
               className="rounded-lg border border-line bg-surface p-3 space-y-2"
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-medium text-ink leading-snug">
+                <span className="text-sm font-medium text-ink leading-snug break-words [overflow-wrap:anywhere] min-w-0">
                   {criterion.text}
                 </span>
                 <Chip tone={criterion.required ? "warning" : "neutral"} className="shrink-0">

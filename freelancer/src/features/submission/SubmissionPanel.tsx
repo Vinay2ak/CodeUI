@@ -18,12 +18,20 @@ import { Chip } from "../../components/ui/Chip";
 import { Alert } from "../../components/ui/Alert";
 import { formatCurrencyINR } from "../../lib/format";
 import { ApiError } from "../../lib/errors";
+import { aiFeature } from "../../lib/features";
+import { BeforeYouSubmitCard } from "./BeforeYouSubmitCard";
 
 interface SubmissionPanelProps {
   taskId: string;
   workspaceStatus: string;
   changedCount: number;
   isStale: boolean;
+  hasUnsavedChanges?: boolean;
+  onSaveAll?: () => Promise<void>;
+  onOpenFile?: (path: string) => void;
+  files?: { path: string }[];
+  lastSavedAt?: number | null;
+  changedPaths?: string[];
 }
 
 export const SubmissionPanel: React.FC<SubmissionPanelProps> = ({
@@ -31,6 +39,12 @@ export const SubmissionPanel: React.FC<SubmissionPanelProps> = ({
   workspaceStatus,
   changedCount,
   isStale,
+  hasUnsavedChanges = false,
+  onSaveAll,
+  onOpenFile,
+  files = [],
+  lastSavedAt = null,
+  changedPaths = [],
 }) => {
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState("");
@@ -219,6 +233,21 @@ export const SubmissionPanel: React.FC<SubmissionPanelProps> = ({
           className="w-full rounded-lg border border-line-strong bg-input p-2.5 text-xs text-ink placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 disabled:cursor-not-allowed resize-none"
         />
       </div>
+
+      {/* Before you submit Card (Self-check & Draft summary) */}
+      {!isLocked && (aiFeature("selfcheck") || aiFeature("draft")) && (
+        <BeforeYouSubmitCard
+          taskId={taskId}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onSaveAll={onSaveAll}
+          onOpenFile={onOpenFile}
+          files={files}
+          lastSavedAt={lastSavedAt}
+          changedPaths={changedPaths}
+          notes={notes}
+          onApplyDraft={(newNotes) => setNotes(newNotes)}
+        />
+      )}
 
       {/* Gate Checklist */}
       <div className="rounded-lg border border-line bg-raised p-3 space-y-2">
