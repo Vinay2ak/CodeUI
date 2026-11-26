@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { MotionConfig } from "framer-motion";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 import { restoreSession, type BootstrapResult } from "./app/bootstrap";
 import { SignInPage } from "./features/auth/SignInPage";
 import { clearDraft } from "./features/onboarding/draft";
@@ -34,10 +37,15 @@ export function App() {
   }, [navigate]);
 
   return (
-    <Routes>
-      <Route path="/login" element={<SignInPage bootstrap={bootstrap} />} />
-      <Route path="/register" element={<RegisterPage bootstrap={bootstrap} />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+    <MotionConfig reducedMotion="user">
+      <TooltipProvider>
+        <Routes>
+          <Route path="/login" element={<SignInPage bootstrap={bootstrap} />} />
+          <Route path="/register" element={<RegisterPage bootstrap={bootstrap} />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+        <Toaster position="bottom-right" />
+      </TooltipProvider>
+    </MotionConfig>
   );
 }

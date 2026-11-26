@@ -156,7 +156,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const url = cleanPath;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
   if (signal) {
     signal.addEventListener("abort", () => controller.abort());
   }

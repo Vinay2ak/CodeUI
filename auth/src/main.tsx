@@ -7,6 +7,7 @@ import { VITE_USE_MOCKS, VITE_MOCK_SERVICES } from "./lib/env";
 import { applyTheme, getTheme } from "./lib/theme";
 import "./styles/tokens.css";
 import "./styles/index.css";
+import "./components/ui/Select/select.css";
 
 // Apply saved theme on load
 applyTheme(getTheme());

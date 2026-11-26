@@ -1,5 +1,5 @@
 import { CheckCircle2, Github } from "lucide-react";
-import { Button } from "../../../components/ui/Button";
+import { Button } from "../../../components/ui/button";
 
 export interface GitHubCardProps {
   mode: "mock" | "off";

@@ -65,12 +65,12 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
           aria-invalid={Boolean(error) || undefined}
           aria-describedby={describedBy || undefined}
           className={[
-            "w-full rounded-md border bg-bg px-3.5 py-2.5 text-sm text-text placeholder:text-text-muted/70",
-            "transition-colors duration-fast resize-y",
-            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
+            "w-full rounded-xl border bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/75",
+            "transition-colors duration-fast resize-y outline-none",
+            "focus-visible:ring-3",
             error
-              ? "border-danger focus-visible:outline-danger"
-              : "border-border hover:border-text-muted focus:border-primary",
+              ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+              : "border-input hover:border-muted-foreground/60 focus-visible:border-ring focus-visible:ring-ring/25",
             className,
           ]
             .filter(Boolean)

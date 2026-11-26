@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeBridge — Sign in</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23740505'/><path d='M12 11L7 16l5 5M20 11l5 5-5 5' stroke='%23FAF6F0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <script>
@@ -16,17 +16,20 @@
         try {
           var saved = localStorage.getItem("cb-theme");
           if (saved === "light") {
+            document.documentElement.classList.remove("dark");
             document.documentElement.setAttribute("data-theme", "light");
           } else {
-            document.documentElement.removeAttribute("data-theme");
+            document.documentElement.classList.add("dark");
+            document.documentElement.setAttribute("data-theme", "dark");
           }
         } catch (e) {
-          document.documentElement.removeAttribute("data-theme");
+          document.documentElement.classList.add("dark");
+          document.documentElement.setAttribute("data-theme", "dark");
         }
       })();
     </script>
   </head>
-  <body class="bg-bg text-text font-sans antialiased">
+  <body class="bg-background text-foreground font-sans antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,19 +1,57 @@
-import { forwardRef, useId, type SelectHTMLAttributes } from "react";
+import { forwardRef, useId, useMemo } from "react";
 import { AlertCircle } from "lucide-react";
+import { Select, type SelectOption as UISelectOption } from "../../../components/ui/Select";
 
-export type SelectOption = string | { value: string; label: string };
+export type SelectOption =
+  | string
+  | {
+      value: string;
+      label: string;
+      description?: string;
+      disabled?: boolean;
+      tone?: "success" | "primary" | "muted";
+    };
 
-export interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectFieldProps {
+  id?: string;
+  name?: string;
   label: string;
   options: readonly SelectOption[];
+  value?: string;
+  defaultValue?: string;
   error?: string;
   hint?: string;
+  disabled?: boolean;
+  required?: boolean;
+  placeholder?: string;
+  className?: string;
+  onChange?: (e: { target: { value: string; name?: string } } | any) => void;
+  onBlur?: () => void;
 }
 
-export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
-  ({ label, options, error, hint, id, className = "", ...props }, ref) => {
+export const SelectField = forwardRef<any, SelectFieldProps>(
+  (
+    {
+      label,
+      options,
+      value,
+      defaultValue,
+      error,
+      hint,
+      id,
+      name,
+      disabled = false,
+      required = false,
+      placeholder = "Select…",
+      className = "",
+      onChange,
+      onBlur,
+    },
+    ref
+  ) => {
     const generatedId = useId();
     const selectId = id ?? generatedId;
+    const labelId = `${selectId}-label`;
     const hintId = `${selectId}-hint`;
     const errorId = `${selectId}-error`;
 
@@ -21,39 +59,53 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
       .filter(Boolean)
       .join(" ");
 
+    const normalizedOptions = useMemo<UISelectOption[]>(() => {
+      return options.map((opt) => {
+        if (typeof opt === "string") {
+          return { value: opt, label: opt };
+        }
+        return {
+          value: opt.value,
+          label: opt.label,
+          description: opt.description,
+          disabled: opt.disabled,
+          tone: opt.tone,
+        };
+      });
+    }, [options]);
+
+    const handleChange = (newVal: string) => {
+      if (onChange) {
+        onChange({
+          target: {
+            value: newVal,
+            name: name ?? "",
+          },
+        });
+      }
+    };
+
     return (
       <div className="flex flex-col gap-1.5 min-w-0">
-        <label htmlFor={selectId} className="text-sm font-medium text-text">
+        <label id={labelId} htmlFor={selectId} className="text-sm font-medium text-text">
           {label}
         </label>
-        <select
+        <Select
           ref={ref}
           id={selectId}
-          aria-invalid={Boolean(error) || undefined}
+          name={name}
+          value={value ?? defaultValue}
+          options={normalizedOptions}
+          placeholder={placeholder}
+          disabled={disabled}
+          required={required}
+          invalid={Boolean(error)}
+          aria-labelledby={labelId}
           aria-describedby={describedBy || undefined}
-          className={[
-            "w-full rounded-md border bg-bg px-3.5 py-2.5 text-sm text-text",
-            "transition-colors duration-fast",
-            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
-            error
-              ? "border-danger focus-visible:outline-danger"
-              : "border-border hover:border-text-muted focus:border-primary",
-            className,
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          {...props}
-        >
-          {options.map((opt) => {
-            const optionValue = typeof opt === "string" ? opt : opt.value;
-            const optionLabel = typeof opt === "string" ? opt : opt.label;
-            return (
-              <option key={optionValue} value={optionValue}>
-                {optionLabel}
-              </option>
-            );
-          })}
-        </select>
+          className={className}
+          onChange={handleChange}
+          onBlur={onBlur}
+        />
         {hint && !error && (
           <p id={hintId} className="text-xs text-text-muted">
             {hint}

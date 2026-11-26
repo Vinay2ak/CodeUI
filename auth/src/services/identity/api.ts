@@ -1,4 +1,4 @@
-import { apiFetch } from "../../lib/http";
+import { apiFetch, setAccessToken } from "../../lib/http";
 import {
   adaptAuthResponse,
   adaptRefreshResponse,
@@ -60,7 +60,25 @@ export async function login(email: string, password: string): Promise<AuthRespon
     skipAuth: true,
   });
 
-  return adaptAuthResponse(data);
+  const adapted = adaptAuthResponse(data);
+  if (
+    adapted.accessToken &&
+    (!adapted.user ||
+      !adapted.user.email ||
+      adapted.user.displayName === "User" ||
+      adapted.user.displayName === adapted.user.email.split("@")[0])
+  ) {
+    try {
+      setAccessToken(adapted.accessToken);
+      const meController = new AbortController();
+      const meTimer = setTimeout(() => meController.abort(), 2000);
+      const me = await getMe(meController.signal).finally(() => clearTimeout(meTimer));
+      return { ...adapted, user: me };
+    } catch {
+      // Keep adapted user if profile enrichment times out or fails
+    }
+  }
+  return adapted;
 }
 
 /**

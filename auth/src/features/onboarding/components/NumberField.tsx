@@ -28,7 +28,7 @@ export const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
           {prefix && (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute left-3.5 text-sm font-medium text-text-muted"
+              className="pointer-events-none absolute left-3.5 font-mono text-sm font-medium text-muted-foreground"
             >
               {prefix}
             </span>
@@ -40,13 +40,13 @@ export const NumberField = forwardRef<HTMLInputElement, NumberFieldProps>(
             aria-invalid={Boolean(error) || undefined}
             aria-describedby={describedBy || undefined}
             className={[
-              "w-full rounded-md border bg-bg py-2.5 pr-3.5 text-sm text-text placeholder:text-text-muted/70",
-              "transition-colors duration-fast",
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
+              "h-10 w-full rounded-xl border bg-background py-2 pr-3.5 font-mono tabular-nums text-sm text-foreground placeholder:text-muted-foreground/75",
+              "transition-colors duration-fast outline-none",
+              "focus-visible:ring-3",
               prefix ? "pl-8" : "pl-3.5",
               error
-                ? "border-danger focus-visible:outline-danger"
-                : "border-border hover:border-text-muted focus:border-primary",
+                ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+                : "border-input hover:border-muted-foreground/60 focus-visible:border-ring focus-visible:ring-ring/25",
               className,
             ]
               .filter(Boolean)

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import type { BootstrapResult } from "../../app/bootstrap";
 import { redirectToDashboard } from "../../app/redirect";
 import { Alert } from "../../components/ui/Alert";
-import { Button } from "../../components/ui/Button";
+import { Button } from "../../components/ui/button";
 import { Spinner } from "../../components/ui/Spinner";
 import { VITE_DASHBOARD_URL } from "../../lib/env";
 import { logout, saveOwnerProfile } from "../../services/identity/api";

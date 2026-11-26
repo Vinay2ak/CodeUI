@@ -14,9 +14,11 @@ export function applyTheme(theme: Theme): void {
     return;
   }
   if (theme === "light") {
+    document.documentElement.classList.remove("dark");
     document.documentElement.setAttribute("data-theme", "light");
   } else {
-    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.classList.add("dark");
+    document.documentElement.setAttribute("data-theme", "dark");
   }
   try {
     localStorage.setItem(STORAGE_KEY, theme);

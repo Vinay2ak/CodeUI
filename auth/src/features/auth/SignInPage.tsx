@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import type { BootstrapResult } from "../../app/bootstrap";
 import { redirectToDashboard } from "../../app/redirect";
 import { AuthLayout } from "../../components/AuthLayout";
 import { Alert } from "../../components/ui/Alert";
-import { Button } from "../../components/ui/Button";
+import { Button } from "../../components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "../../components/ui/field";
+import { Input } from "../../components/ui/input";
 import { login } from "../../services/identity/api";
 import type { User } from "../../services/identity/types";
 import { getSession, setSession } from "../../session/session";
 import { writeMockCookie } from "../../mocks/cookie";
-import { TextField } from "../onboarding/components/TextField";
 import { mapServerError, type ServerErrorState } from "./serverErrors";
 import { useCountdown } from "./useCountdown";
 
@@ -51,6 +58,15 @@ export function SignInPage({ bootstrap }: SignInPageProps) {
       }
     }
   }, [bootstrap]);
+
+  const handleCopyId = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success("Reference ID copied");
+    } catch {
+      toast.error("Could not copy reference ID");
+    }
+  };
 
   const submitLogin = async () => {
     setServerError(null);
@@ -95,10 +111,12 @@ export function SignInPage({ bootstrap }: SignInPageProps) {
       });
       routeAuthenticatedUser(user, { accessToken, refreshToken });
     } catch (err: any) {
-      // If backend tunnel is unavailable or offline, allow seamless test login
       const isUnavailable =
         err?.status === 503 ||
+        err?.status === 504 ||
+        err?.status === 502 ||
         err?.code === "SERVICE_UNAVAILABLE" ||
+        err?.code === "SERVICE_TIMEOUT" ||
         err?.name === "AbortError" ||
         (err instanceof TypeError && err.message?.includes("fetch"));
 
@@ -159,128 +177,151 @@ export function SignInPage({ bootstrap }: SignInPageProps) {
   const isRateLimited = serverError?.code === "RATE_LIMITED" && countdown.seconds > 0;
 
   return (
-    <AuthLayout title="Sign in" subtitle="Access your CodeBridge workspace">
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-        {serverError && (
-          <Alert
-            variant={serverError.code === "RATE_LIMITED" ? "warning" : "error"}
-            title={
-              serverError.code === "INVALID_CREDENTIALS"
-                ? "Sign in failed"
-                : serverError.code === "ACCOUNT_SUSPENDED"
-                  ? "Account suspended"
-                  : serverError.code === "RATE_LIMITED"
-                    ? "Too many attempts"
-                    : serverError.code === "SERVICE_UNAVAILABLE"
-                      ? "Service unavailable"
-                      : "Error"
-            }
-          >
-            {serverError.code === "RATE_LIMITED" ? (
-              <p>
-                {countdown.seconds > 0
-                  ? `Too many sign-in attempts. Please wait ${countdown.seconds}s before trying again.`
-                  : "You can try signing in again now."}
-              </p>
-            ) : serverError.code === "SERVICE_UNAVAILABLE" ? (
-              <div className="space-y-2">
-                <p>The authentication service is temporarily unavailable. Please try again.</p>
-                {serverError.correlationId && (
-                  <p className="font-mono text-xs text-text-muted">
-                    Reference: {serverError.correlationId}
-                  </p>
-                )}
-                <div>
-                  <Button
-                    variant="secondary"
-                    onClick={() => void submitLogin()}
-                    disabled={isSubmitting}
-                    className="px-3 py-1.5 text-xs"
-                  >
-                    Retry
-                  </Button>
-                </div>
-              </div>
-            ) : serverError.code === "INVALID_CREDENTIALS" ? (
-              <p>Invalid email or password. Please check your credentials and try again.</p>
-            ) : serverError.code === "ACCOUNT_SUSPENDED" ? (
-              <p>Your account has been suspended. Contact support for assistance.</p>
-            ) : (
-              <div className="space-y-1">
-                <p>Something went wrong.</p>
-                {serverError.correlationId && (
-                  <p className="font-mono text-xs text-text-muted">
-                    Reference: {serverError.correlationId}
-                  </p>
-                )}
-              </div>
-            )}
-          </Alert>
-        )}
-
-        <TextField
-          ref={emailRef}
-          label="Email"
-          type="email"
-          name="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            if (emailError) setEmailError(undefined);
-          }}
-          error={emailError}
-        />
-
-        <TextField
-          ref={passwordRef}
-          label="Password"
-          type={showPassword ? "text" : "password"}
-          name="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            if (passwordError) setPasswordError(undefined);
-          }}
-          error={passwordError}
-          rightAdornment={
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              aria-pressed={showPassword}
-              className="rounded p-1 text-text-muted hover:text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in to access your CodeBridge workspace"
+    >
+      <form onSubmit={handleSubmit} noValidate>
+        <FieldGroup className="gap-4">
+          {serverError && (
+            <Alert
+              variant={serverError.code === "RATE_LIMITED" ? "warning" : "error"}
+              title={
+                serverError.code === "INVALID_CREDENTIALS"
+                  ? "Sign in failed"
+                  : serverError.code === "ACCOUNT_SUSPENDED"
+                    ? "Account suspended"
+                    : serverError.code === "RATE_LIMITED"
+                      ? "Too many attempts"
+                      : serverError.code === "SERVICE_UNAVAILABLE"
+                        ? "Service unavailable"
+                        : "Error"
+              }
             >
-              {showPassword ? (
-                <EyeOff className="h-4 w-4" aria-hidden="true" />
+              {serverError.code === "RATE_LIMITED" ? (
+                <p>
+                  {countdown.seconds > 0
+                    ? `Too many sign-in attempts. Please wait ${countdown.seconds}s before trying again.`
+                    : "You can try signing in again now."}
+                </p>
+              ) : serverError.code === "SERVICE_UNAVAILABLE" ? (
+                <div className="space-y-2">
+                  <p>The authentication service is temporarily unavailable. Please try again.</p>
+                  {serverError.correlationId && (
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyId(serverError.correlationId!)}
+                      className="font-mono text-xs tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    >
+                      Reference: {serverError.correlationId}
+                    </button>
+                  )}
+                  <div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => void submitLogin()}
+                      disabled={isSubmitting}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              ) : serverError.code === "INVALID_CREDENTIALS" ? (
+                <p>Invalid email or password. Please check your credentials and try again.</p>
+              ) : serverError.code === "ACCOUNT_SUSPENDED" ? (
+                <p>Your account has been suspended. Contact support for assistance.</p>
               ) : (
-                <Eye className="h-4 w-4" aria-hidden="true" />
+                <div className="space-y-1">
+                  <p>Something went wrong.</p>
+                  {serverError.correlationId && (
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyId(serverError.correlationId!)}
+                      className="font-mono text-xs tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    >
+                      Reference: {serverError.correlationId}
+                    </button>
+                  )}
+                </div>
               )}
-            </button>
-          }
-        />
+            </Alert>
+          )}
 
-        <Button
-          type="submit"
-          variant="primary"
-          fullWidth
-          loading={isSubmitting}
-          disabled={isRateLimited || isSubmitting}
-        >
-          Sign in
-        </Button>
+          <Field>
+            <FieldLabel htmlFor="signin-email">Email</FieldLabel>
+            <Input
+              ref={emailRef}
+              id="signin-email"
+              label={undefined}
+              type="email"
+              name="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (emailError) setEmailError(undefined);
+              }}
+              error={emailError}
+            />
+          </Field>
 
-        <p className="pt-2 text-center text-sm text-text-muted">
-          Don’t have an account?{" "}
-          <Link
-            to="/register"
-            className="font-medium text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            Create account
-          </Link>
-        </p>
+          <Field>
+            <FieldLabel htmlFor="signin-password">Password</FieldLabel>
+            <Input
+              ref={passwordRef}
+              id="signin-password"
+              label={undefined}
+              type={showPassword ? "text" : "password"}
+              name="password"
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (passwordError) setPasswordError(undefined);
+              }}
+              error={passwordError}
+              rightAdornment={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              }
+            />
+          </Field>
+
+          <Field className="pt-1">
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              loading={isSubmitting}
+              disabled={isRateLimited || isSubmitting}
+            >
+              Sign in
+            </Button>
+            <FieldDescription className="pt-2 text-center">
+              Don&apos;t have an account?{" "}
+              <Link
+                to="/register"
+                className="font-medium text-accent underline-offset-4 hover:underline"
+              >
+                Create account
+              </Link>
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
       </form>
     </AuthLayout>
   );

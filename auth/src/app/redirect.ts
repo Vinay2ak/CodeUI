@@ -68,7 +68,7 @@ export function redirectToDashboard(
   params.set("role", role);
   if (user) {
     try {
-      params.set("user", encodeURIComponent(JSON.stringify(user)));
+      params.set("user", JSON.stringify(user));
     } catch {}
   }
 

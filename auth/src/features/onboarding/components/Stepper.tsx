@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import type { UserRole } from "../types";
 
@@ -19,11 +20,11 @@ export function Stepper({ currentStep, role, onStepClick }: StepperProps) {
 
   return (
     <nav aria-label="Onboarding progress" className="mb-6">
-      <p className="text-xs font-medium text-text-muted mb-2">
+      <p className="text-xs font-medium text-muted-foreground mb-2.5">
         Step {Math.min(currentStep + 1, total)} of {total}
       </p>
       <ol
-        className="grid gap-2"
+        className="grid gap-2 rounded-2xl border border-border bg-card p-1.5"
         style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}
       >
         {labels.map((label, index) => {
@@ -32,23 +33,31 @@ export function Stepper({ currentStep, role, onStepClick }: StepperProps) {
           const isClickable = index >= 1 && isDone && Boolean(onStepClick);
 
           const badgeClass = [
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold border transition-colors duration-fast",
+            "relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold border transition-colors duration-fast",
             isActive
-              ? "border-primary bg-primary text-on-primary"
+              ? "border-primary bg-primary text-primary-foreground"
               : isDone
-                ? "border-primary/60 bg-primary/15 text-primary"
-                : "border-border bg-surface text-text-muted",
+                ? "border-accent/60 bg-accent/15 text-accent"
+                : "border-border bg-background text-muted-foreground",
           ].join(" ");
 
           const content = (
             <>
+              {isActive && (
+                <motion.span
+                  layoutId="wizard-active-step"
+                  transition={{ type: "spring", stiffness: 420, damping: 32 }}
+                  className="absolute inset-0 rounded-xl bg-secondary border border-border/70"
+                  aria-hidden="true"
+                />
+              )}
               <span className={badgeClass} aria-hidden="true">
                 {isDone ? <Check className="h-3.5 w-3.5" /> : index + 1}
               </span>
               <span
                 className={[
-                  "truncate text-xs font-medium",
-                  isActive ? "text-text" : isDone ? "text-text" : "text-text-muted",
+                  "relative z-10 truncate text-[11px] sm:text-xs font-medium",
+                  isActive ? "text-foreground" : isDone ? "text-foreground" : "text-muted-foreground",
                 ].join(" ")}
               >
                 {label}
@@ -60,18 +69,18 @@ export function Stepper({ currentStep, role, onStepClick }: StepperProps) {
             <li
               key={label}
               aria-current={isActive ? "step" : undefined}
-              className="min-w-0"
+              className="relative min-w-0"
             >
               {isClickable ? (
                 <button
                   type="button"
                   onClick={() => onStepClick?.(index)}
-                  className="flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors duration-fast hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+                  className="relative flex w-full min-w-0 items-center gap-1.5 sm:gap-2 rounded-xl px-2 py-1.5 text-left transition-colors duration-fast hover:bg-secondary/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
                 >
                   {content}
                 </button>
               ) : (
-                <span className="flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1">
+                <span className="relative flex w-full min-w-0 items-center gap-1.5 sm:gap-2 rounded-xl px-2 py-1.5">
                   {content}
                 </span>
               )}

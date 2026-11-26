@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { ShieldCheck, X } from "lucide-react";
-import { Button } from "../../../components/ui/Button";
+import { Button } from "../../../components/ui/button";
 import { TextField } from "./TextField";
 
 export interface GitHubDialogProps {
@@ -97,7 +97,7 @@ export function GitHubDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -109,28 +109,28 @@ export function GitHubDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-md rounded-lg border border-border bg-surface p-6 shadow-lg"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg"
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
               <ShieldCheck className="h-5 w-5" aria-hidden="true" />
             </span>
-            <h2 id={titleId} className="text-base font-semibold text-text">
+            <h2 id={titleId} className="text-base font-semibold text-foreground">
               Simulated GitHub authorization
             </h2>
           </div>
           <Button
             variant="ghost"
+            size="icon-sm"
             onClick={onClose}
             aria-label="Close dialog"
-            className="px-2 py-1.5"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
 
-        <ul className="mb-5 space-y-2 rounded-md border border-border bg-bg p-3.5 text-xs text-text-muted">
+        <ul className="mb-5 space-y-2 rounded-xl border border-border bg-background p-3.5 text-xs text-muted-foreground">
           <li className="flex items-start gap-2">
             <span className="text-primary font-semibold" aria-hidden="true">•</span>
             <span>Read-only access to repositories you choose later</span>

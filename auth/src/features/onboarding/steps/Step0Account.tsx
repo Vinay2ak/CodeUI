@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { CheckCircle2, Circle, CircleCheck, Eye, EyeOff, Github } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Alert } from "../../../components/ui/Alert";
-import { Button } from "../../../components/ui/Button";
+import { Button } from "../../../components/ui/button";
 import { VITE_GITHUB_MODE } from "../../../lib/env";
 import { checkPassword, strength } from "../../../lib/password";
 import { writeMockCookie } from "../../../mocks/cookie";
@@ -439,9 +439,9 @@ export function Step0Account({
             error={fieldErrors.email}
           />
           {isEmailTaken && (
-            <p className="-mt-1 text-xs text-text-muted">
+            <p className="-mt-1 text-xs text-muted-foreground">
               Already registered?{" "}
-              <Link to="/login" className="font-medium text-primary hover:underline">
+              <Link to="/login" className="font-medium text-accent underline-offset-4 hover:underline">
                 Sign in instead
               </Link>
             </p>
@@ -557,11 +557,11 @@ export function Step0Account({
         submitDisabled={isRateLimited}
       />
 
-      <p className="text-center text-sm text-text-muted">
+      <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
         <Link
           to="/login"
-          className="font-medium text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          className="font-medium text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
         >
           Sign in
         </Link>

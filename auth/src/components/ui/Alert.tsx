@@ -44,7 +44,7 @@ export function Alert({ variant = "info", title, children, className = "" }: Ale
     <div
       role={role}
       className={[
-        "flex items-start gap-3 rounded-md border p-3.5 text-sm",
+        "flex items-start gap-3 rounded-xl border p-3.5 text-sm",
         container,
         className,
       ]

@@ -16,6 +16,69 @@ npm run build      # type-checks (tsc -b) and builds production bundle
 npx vitest run     # runs unit tests
 ```
 
+## Select Component
+
+A modern, WAI-ARIA accessible custom select component with frosted-glass popover, warm brown scrolling/sliding animation highlight, and full keyboard navigation.
+
+### API
+
+```tsx
+import { Select } from "./components/ui/Select";
+
+<Select
+  id="timezone"
+  name="timezone"
+  value={value}
+  onChange={(val) => setValue(val)}
+  options={[
+    { value: "utc", label: "UTC" },
+    { value: "est", label: "Eastern Time", description: "UTC-5" },
+    { value: "custom", label: "Custom", tone: "primary" },
+  ]}
+  placeholder="Select an option…"
+  disabled={false}
+  invalid={false}
+  required={false}
+  size="md"
+  aria-label="Timezone"
+/>
+```
+
+Also wrapped by `SelectField` for structured forms with `label`, `hint`, and `error` display:
+
+```tsx
+import { SelectField } from "./features/onboarding/components/SelectField";
+
+<SelectField
+  label="Timezone"
+  name="timezone"
+  options={timezones}
+  value={timezone}
+  hint="Detected from your browser"
+  onChange={(e) => setTimezone(e.target.value)}
+  error={errors.timezone}
+/>
+```
+
+### Keyboard Shortcuts (WAI-ARIA Combobox)
+
+- **Closed**: `ArrowDown`, `ArrowUp`, `Enter`, `Space` open the popover listbox.
+- **Open**:
+  - `ArrowDown` / `ArrowUp`: Move active highlight to adjacent enabled option.
+  - `Home` / `End`: Jump directly to the first / last enabled option.
+  - `PageUp` / `PageDown`: Jump by 10 items (clamped, skipping disabled).
+  - `Enter` / `Space`: Select the active option and close.
+  - `Escape`: Close without selecting (calls `stopPropagation` so modal/dialog stays open).
+  - `Tab`: Select active option, close, and advance focus.
+  - `Typeahead`: Character typing performs a 500ms case-insensitive prefix search; repeating the same character cycles through options starting with that letter.
+
+### Theme & Motion
+
+- Restrained frosted-glass popover with `backdrop-filter: blur(16px)` and 1px inner highlight sheen.
+- Animated warm brown sliding highlight (`.cb-select-highlight`) that glides between options with high-contrast text visibility.
+- Custom brown-accented scrollbar (`scrollbar-color`) across standard and WebKit engines.
+- Respects `prefers-reduced-motion` and `prefers-reduced-transparency`.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` for local development.

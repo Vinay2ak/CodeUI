@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { AlertCircle, CheckCircle2, Plus, X } from "lucide-react";
 import { Alert } from "../../../components/ui/Alert";
-import { Button } from "../../../components/ui/Button";
+import { Button } from "../../../components/ui/button";
 import { VITE_GITHUB_MODE } from "../../../lib/env";
 import { mockLink } from "../../../services/github/api";
 import { CheckboxRow } from "../components/CheckboxRow";

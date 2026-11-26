@@ -1,5 +1,5 @@
 import { VITE_USE_MOCKS } from "../lib/env";
-import { ApiError, setAccessToken } from "../lib/http";
+import { setAccessToken } from "../lib/http";
 import { readMockCookie } from "../mocks/cookie";
 import { getMe, refresh } from "../services/identity/api";
 import type { User } from "../services/identity/types";
@@ -20,9 +20,9 @@ export async function restoreSession(): Promise<BootstrapResult> {
     }
   }
 
-  // Use a snappy timeout (2.5s) for background session restoration so anonymous users load instantly
+  // Use a snappy timeout (1.5s) for background session restoration so anonymous users load instantly
   const controller = new AbortController();
-  const timer = globalThis.setTimeout(() => controller.abort(), 2500);
+  const timer = globalThis.setTimeout(() => controller.abort(), 1500);
 
   try {
     // In real mode, refresh token is an httpOnly cookie sent automatically via credentials: "include"
@@ -31,14 +31,8 @@ export async function restoreSession(): Promise<BootstrapResult> {
     const user = await getMe(controller.signal);
     setSession({ user, accessToken });
     return { status: "authenticated", user };
-  } catch (err) {
-    if (
-      err instanceof ApiError &&
-      (err.status === 503 || err.status === 502 || err.code === "SERVICE_UNAVAILABLE")
-    ) {
-      return { status: "unavailable" };
-    }
-    // If not authenticated or request timed out, proceed immediately as anonymous
+  } catch (_err) {
+    // If not authenticated, offline, or request timed out, proceed as anonymous
     clearSession();
     return { status: "anonymous" };
   } finally {

@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { Input, type InputProps } from "../../../components/ui/Input";
+import { Input, type InputProps } from "../../../components/ui/input";
 
 export type TextFieldProps = InputProps;
 
