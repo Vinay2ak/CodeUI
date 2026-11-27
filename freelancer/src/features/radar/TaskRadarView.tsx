@@ -217,16 +217,26 @@ export const TaskRadarView: React.FC<TaskRadarViewProps> = ({
     setTimeout(() => setLiveAnnouncement(""), 3000);
   };
 
-  const handleAccept = (projectId: string) => {
+  const handleAccept = async (projectId: string) => {
     claimTaskId(projectId);
     setTaskAcceptedMap((prev) => ({ ...prev, [projectId]: true }));
     setTaskDeclinedMap((prev) => ({ ...prev, [projectId]: false }));
     queryClient.setQueryData<ProjectScope[]>(["projects", "realtime-list"], (old) =>
       old?.map((p) => (p.id === projectId ? { ...p, projectState: "in_progress" } : p))
     );
-    void projectApi.acceptProject(projectId).catch(() => {});
-    announce("Task accepted. Workspace is ready to launch.");
-    toast.success("Task accepted. Ready to open workspace.");
+    try {
+      await projectApi.acceptProject(projectId);
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      announce("Task accepted. Workspace is ready to launch.");
+      toast.success("Task accepted. Ready to open workspace.");
+    } catch (err) {
+      unclaimTaskId(projectId);
+      setTaskAcceptedMap((prev) => ({ ...prev, [projectId]: false }));
+      await queryClient.invalidateQueries({ queryKey: ["projects"] });
+      const msg = err instanceof Error ? err.message : "Failed to accept task.";
+      toast.error(msg);
+    }
   };
 
   const handleDecline = (projectId: string) => {

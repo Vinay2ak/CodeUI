@@ -143,14 +143,17 @@ export const projectApi = {
   },
 
   async acceptProject(id: string): Promise<ProjectScope> {
-    claimTaskId(id);
     try {
       const raw = await request<any>(`/api/v1/projects/${id}/accept`, {
         method: "POST",
       });
+      claimTaskId(id);
       if (raw) return applyLocalClaim(adaptProjectScope(raw));
-    } catch {
-      // Persist locally via claimTaskId when backend accept route is not exposed
+    } catch (err) {
+      if (!env.useMocks) {
+        throw err;
+      }
+      claimTaskId(id);
     }
     const current = await this.getProject(id);
     return { ...current, projectState: "in_progress" };
